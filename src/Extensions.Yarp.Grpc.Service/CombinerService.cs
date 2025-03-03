@@ -4,6 +4,7 @@ using Grpc.Reflection;
 using Grpc.Reflection.V1Alpha;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace GrpcCombinerTestProxy.Services;
@@ -19,18 +20,18 @@ public class CombinerService : ServerReflection.ServerReflectionBase
     {
         await foreach (var request in requestStream.ReadAllAsync())
         {
-            var hosts = yarpConfig.services.Select(s => s.Host);
-            //var tasks = hosts.Select(adr => GetReflectionResponses(adr, requests));
-            //var responsesArr= await Task.WhenAll(tasks);
-            //var responses = responsesArr.SelectMany(r => r).ToList();
+            var hosts = yarpConfig.Hosts;
 
-            var responses = new List<ServerReflectionResponse>();
+            var returnedResponses = new List<ServerReflectionResponse>();
             foreach (var host in hosts)
             {
                 try
                 {
-                    var res = await GetReflectionResponses(host, request);
-                    responses.AddRange(res);
+                    var responses = await GetReflectionResponses(host, request);
+
+                    RemoveNotAllowedServices(ref responses,yarpConfig.AllowedServiceRegex);
+
+                    returnedResponses.AddRange(responses);
                 }
                 catch (Exception e)
                 {
@@ -38,12 +39,36 @@ public class CombinerService : ServerReflection.ServerReflectionBase
                 }
             }
 
-            var combinedResponses = CombineResponses(responses);
+            var combinedResponses = CombineResponses(returnedResponses);
             await responseStream.WriteAsync(combinedResponses);
         }
     }
 
-    private async Task<List<ServerReflectionResponse>> GetReflectionResponses(string adr, ServerReflectionRequest request)
+    private void RemoveNotAllowedServices(ref List<ServerReflectionResponse> responses, Regex allowedServiceRegex) {
+        for (int i = 0; i < responses.Count; i++)
+        {
+            var response= responses[i];
+            if (response == null || response.ListServicesResponse==null|| response.ListServicesResponse.Service==null)
+            {
+                continue;
+            }
+            for (int j = 0; j < response.ListServicesResponse.Service.Count; j++)
+            {
+                var service = response.ListServicesResponse.Service[j];
+                if (service == null)
+                {
+                    continue;
+                }
+                if(!allowedServiceRegex.IsMatch(service.Name))
+                {
+                    response.ListServicesResponse.Service.RemoveAt(j);
+                    j--;
+                }
+            }
+        }
+    }
+
+    public static async Task<List<ServerReflectionResponse>> GetReflectionResponses(string adr, ServerReflectionRequest request)
     {
         var channel = GrpcChannel.ForAddress(adr);
         var client = new ServerReflection.ServerReflectionClient(channel);

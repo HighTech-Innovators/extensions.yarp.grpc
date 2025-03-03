@@ -20,8 +20,9 @@ builder.Services.AddSingleton<YarpConfig>();
 
 // Add YARP services
 var yarpConfig = new YarpConfig(builder.Configuration);
+var routes = await yarpConfig.GetRoutes();
 builder.Services.AddReverseProxy()
-    .LoadFromMemory(yarpConfig.GetRoutes(), yarpConfig.GetClusters());
+    .LoadFromMemory(routes, yarpConfig.GetClusters());
 
 var app = builder.Build();
 

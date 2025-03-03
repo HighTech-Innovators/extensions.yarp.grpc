@@ -1,53 +1,83 @@
-﻿using Yarp.ReverseProxy.Configuration;
+﻿using Grpc.Reflection.V1Alpha;
+using Yarp.ReverseProxy.Configuration;
 using Yarp.ReverseProxy.Forwarder;
+using System.Linq;
+using GrpcCombinerTestProxy.Services;
+using System.Text.RegularExpressions;
 
 namespace GrpcCombinerTestProxy
 {
     public class YarpConfig
     {
         public record GrpcService(string Service, string Host);
-
-        public List<GrpcService> services = new List<GrpcService>();
+        public List<string> Hosts { get; init; } = [];
+        public Regex AllowedServiceRegex { get; init; }
         public YarpConfig(IConfiguration configuration)
         {
-            var servicesConfig = configuration.GetSection("GrpcServices").GetChildren();
-            foreach (var serviceConfig in servicesConfig)
-            {
-                var service = serviceConfig["Service"];
-                var host = serviceConfig["Host"];
-                if (service is null || host is null)
-                {
-                    throw new Exception("Service and Host must be provided for each GrpcService");
-                }
-                services.Add(new GrpcService(service, host));
-            }
+            var hostsConfig = configuration.GetSection("Hosts").Get<string[]>() ?? throw new Exception("Hosts must be provided");
+            Hosts.AddRange(hostsConfig);
+            var regexConfig = configuration.GetSection("AllowedServiceRegex").Get<string>() ?? throw new Exception("AllowedServiceRegex must be provided");
+            AllowedServiceRegex = new Regex(regexConfig);
         }
 
-        public IReadOnlyList<RouteConfig> GetRoutes()
+        public async Task<IReadOnlyList<RouteConfig>> GetRoutes()
         {
             var routes = new List<RouteConfig>();
+            var servicesToHosts = await GetServiceNamesFromReflection();
 
-            foreach (var service in services)
+            foreach (var servicesToHost in servicesToHosts)
             {
-                routes.Add(new RouteConfig
+                foreach (var service in servicesToHost.ServiceNames)
                 {
-                    RouteId = service.Service,
-                    ClusterId = service.Service,
-                    Match = new RouteMatch
+                    routes.Add(new RouteConfig
                     {
-                        Path = $"/{service.Service}/{{**catch-all}}"
-                    }
-                });
+                        RouteId = "route-" + servicesToHost.Host + "-" + service,
+                        ClusterId = "cluster-" + servicesToHost.Host,
+                        Match = new RouteMatch
+                        {
+                            Path = $"/{service}/{{**catch-all}}"
+                        }
+                    });
+                }
             }
-
             return routes;
+        }
+
+        public record ServicesToHost(string Host, List<string> ServiceNames);
+        public async Task<List<ServicesToHost>> GetServiceNamesFromReflection()
+        {
+            var result = new List<ServicesToHost>();
+            foreach (var host in Hosts)
+            {
+                try
+                {
+                    var request = new ServerReflectionRequest();
+                    request.ListServices = "*";
+                    var responses = await CombinerService.GetReflectionResponses(host, request);
+
+                    foreach (var response in responses)
+                    {
+                        var names = response.ListServicesResponse.Service.Select(serviceResp => $"{serviceResp.Name}");
+                        var noReflection = names.Where(name => !name.Contains("reflection"));
+
+                        var filtered = noReflection.Where(name => AllowedServiceRegex.IsMatch(name));
+
+                        result.Add(new ServicesToHost(host, filtered.ToList()));
+                    }
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine($"Path getting exception occured {e}");
+                }
+            }
+            return result;
         }
 
         public IReadOnlyList<ClusterConfig> GetClusters()
         {
-            var clusters= new List<ClusterConfig>();
+            var clusters = new List<ClusterConfig>();
 
-            foreach (var service in services)
+            foreach (var host in Hosts)
             {
                 clusters.Add(new ClusterConfig
                 {
@@ -56,10 +86,10 @@ namespace GrpcCombinerTestProxy
                         Version = new Version(2, 0),
                         VersionPolicy = HttpVersionPolicy.RequestVersionExact
                     },
-                    ClusterId = service.Service,
+                    ClusterId = "cluster-" + host,
                     Destinations = new Dictionary<string, DestinationConfig>
                     {
-                        { "destination1", new DestinationConfig { Address = service.Host } }
+                        { "destination1", new DestinationConfig { Address = host } }
                     }
                 });
             }
