@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-namespace GrpcCombinerTestProxy.Services;
+namespace Extensions.Yarp.Grpc.Service;
 public class CombinerService : ServerReflection.ServerReflectionBase
 {
     private readonly YarpConfig yarpConfig;
@@ -29,7 +29,7 @@ public class CombinerService : ServerReflection.ServerReflectionBase
                 {
                     var responses = await GetReflectionResponses(host, request);
 
-                    RemoveNotAllowedServices(ref responses,yarpConfig.AllowedServiceRegex);
+                    RemoveNotAllowedServices(ref responses, yarpConfig.AllowedServiceRegex);
 
                     returnedResponses.AddRange(responses);
                 }
@@ -44,11 +44,12 @@ public class CombinerService : ServerReflection.ServerReflectionBase
         }
     }
 
-    private void RemoveNotAllowedServices(ref List<ServerReflectionResponse> responses, Regex allowedServiceRegex) {
+    private void RemoveNotAllowedServices(ref List<ServerReflectionResponse> responses, Regex allowedServiceRegex)
+    {
         for (int i = 0; i < responses.Count; i++)
         {
-            var response= responses[i];
-            if (response == null || response.ListServicesResponse==null|| response.ListServicesResponse.Service==null)
+            var response = responses[i];
+            if (response == null || response.ListServicesResponse == null || response.ListServicesResponse.Service == null)
             {
                 continue;
             }
@@ -59,7 +60,7 @@ public class CombinerService : ServerReflection.ServerReflectionBase
                 {
                     continue;
                 }
-                if(!allowedServiceRegex.IsMatch(service.Name))
+                if (!allowedServiceRegex.IsMatch(service.Name))
                 {
                     response.ListServicesResponse.Service.RemoveAt(j);
                     j--;
