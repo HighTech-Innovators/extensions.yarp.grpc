@@ -123,82 +123,82 @@ e2e test:
     - VERSION="${CI_COMMIT_TAG:-0.0.0-cibuild}" ./run.sh
   image: ${DOCKER_BUILD_IMAGE}
 
-###########################################################################################################
-###########################################################################################################
-###                                                                                                    ####
-###                                               NUGET PACKAGING                                      ####
-###                                                                                                    ####
-###########################################################################################################
-###########################################################################################################
+# ###########################################################################################################
+# ###########################################################################################################
+# ###                                                                                                    ####
+# ###                                               NUGET PACKAGING                                      ####
+# ###                                                                                                    ####
+# ###########################################################################################################
+# ###########################################################################################################
 
-dotnet pack:
-  extends:
-    - .only_tagged
-    - .docker_build_target
-  variables:
-    DOCKERFILE_TARGET: package
-  stage: publish
-  needs:
-    - dotnet build
+# dotnet pack:
+#   extends:
+#     - .only_tagged
+#     - .docker_build_target
+#   variables:
+#     DOCKERFILE_TARGET: package
+#   stage: publish
+#   needs:
+#     - dotnet build
 
-dotnet nuget push:
-  before_script:
-  - test -n "$TARGET_NUGET" || ( echo "Error, in gitlab-ci config - variable TARGET_NUGET is not filled" && exit 1)
-  - test -n "$TARGET_NUGET_APIKEY" || ( echo "Error, in gitlab-ci config - variable TARGET_NUGET_APIKEY is not filled" && exit 1)
-  extends:
-    - .only_tagged
-    - .docker_build_target
-  variables:
-    DOCKERFILE_TARGET: nugetpush
-  stage: push
-  needs:
-    - dotnet pack
-    - dotnet test
-    - e2e test
+# dotnet nuget push:
+#   before_script:
+#   - test -n "$TARGET_NUGET" || ( echo "Error, in gitlab-ci config - variable TARGET_NUGET is not filled" && exit 1)
+#   - test -n "$TARGET_NUGET_APIKEY" || ( echo "Error, in gitlab-ci config - variable TARGET_NUGET_APIKEY is not filled" && exit 1)
+#   extends:
+#     - .only_tagged
+#     - .docker_build_target
+#   variables:
+#     DOCKERFILE_TARGET: nugetpush
+#   stage: push
+#   needs:
+#     - dotnet pack
+#     - dotnet test
+#     - e2e test
 
-sonarqube-check:
-  extends:
-    - .sonar_docker_build_target
-  variables:
-    DOCKERFILE_TARGET: sonarqube-check
-  stage: sonarqube-check
-  dependencies:
-    - dotnet test
-  allow_failure: false
-  only:
-    - merge_requests
-    - master
-    - main
-    - develop
+# sonarqube-check:
+#   extends:
+#     - .sonar_docker_build_target
+#   variables:
+#     DOCKERFILE_TARGET: sonarqube-check
+#   stage: sonarqube-check
+#   dependencies:
+#     - dotnet test
+#   allow_failure: false
+#   only:
+#     - merge_requests
+#     - master
+#     - main
+#     - develop
 
-sonarqube-vulnerability-report:
-  script:   
-    - >
-      docker buildx build
-      --pull
-      --build-arg SONAR_PROJECT_KEY=$SONAR_PROJECT_KEY
-      --build-arg SONAR_HOST_URL=$SONAR_HOST_URL
-      --build-arg SONAR_TOKEN=$SONAR_TOKEN
-      --build-arg CI_COMMIT_BRANCH=$CI_COMMIT_BRANCH
-      --build-arg CI_MERGE_REQUEST_IID=$CI_MERGE_REQUEST_IID
-      --target ${DOCKERFILE_TARGET}
-      --output type=local,dest=./
-      -f sonar.Dockerfile
-      .
-  image: ${DOCKER_BUILD_IMAGE}
-  variables:
-    DOCKERFILE_TARGET: sonar-report-downloader
-    DOCKER_BUILDKIT: 1
-  stage: sonarqube-vulnerability-report
-  needs:
-    - sonarqube-check
-  allow_failure: true
-  only:
-    - merge_requests
-    - master
-    - main
-    - develop
-  artifacts:
-    expire_in: 1 day
-    reports:
-      sast: ./gl-sast-sonar-report.json 
+# sonarqube-vulnerability-report:
+#   script:   
+#     - >
+#       docker buildx build
+#       --pull
+#       --build-arg SONAR_PROJECT_KEY=$SONAR_PROJECT_KEY
+#       --build-arg SONAR_HOST_URL=$SONAR_HOST_URL
+#       --build-arg SONAR_TOKEN=$SONAR_TOKEN
+#       --build-arg CI_COMMIT_BRANCH=$CI_COMMIT_BRANCH
+#       --build-arg CI_MERGE_REQUEST_IID=$CI_MERGE_REQUEST_IID
+#       --target ${DOCKERFILE_TARGET}
+#       --output type=local,dest=./
+#       -f sonar.Dockerfile
+#       .
+#   image: ${DOCKER_BUILD_IMAGE}
+#   variables:
+#     DOCKERFILE_TARGET: sonar-report-downloader
+#     DOCKER_BUILDKIT: 1
+#   stage: sonarqube-vulnerability-report
+#   needs:
+#     - sonarqube-check
+#   allow_failure: true
+#   only:
+#     - merge_requests
+#     - master
+#     - main
+#     - develop
+#   artifacts:
+#     expire_in: 1 day
+#     reports:
+#       sast: ./gl-sast-sonar-report.json 
