@@ -9,15 +9,18 @@ namespace Extensions.Yarp.Grpc.Service;
 
 public class YarpConfig
 {
+    private readonly ILogger<YarpConfig> logger;
+
     public List<string> Hosts { get; init; } = [];
     public Regex AllowedServiceRegex { get; init; }
 
-    public YarpConfig(IConfiguration configuration)
+    public YarpConfig(IConfiguration configuration,ILogger<YarpConfig> logger)
     {
         var hostsConfig = configuration.GetSection("Hosts").Get<string[]>() ?? throw new Exception("Hosts must be provided");
         Hosts.AddRange(hostsConfig);
         var regexConfig = configuration.GetSection("AllowedServiceRegex").Get<string>() ?? throw new Exception("AllowedServiceRegex must be provided");
         AllowedServiceRegex = new Regex(regexConfig);
+        this.logger = logger;
     }
 
     public async Task<IReadOnlyList<RouteConfig>> GetRoutes()
@@ -67,7 +70,7 @@ public class YarpConfig
             }
             catch (Exception e)
             {
-                Console.WriteLine($"Path getting exception occured {e.Message}");
+                logger.LogError($"Path getting exception occured {e.Message}");
             }
         }
         return result;

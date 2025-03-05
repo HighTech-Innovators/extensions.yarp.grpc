@@ -2,6 +2,7 @@
 using Grpc.Net.Client;
 using Grpc.Reflection;
 using Grpc.Reflection.V1Alpha;
+using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -11,10 +12,12 @@ namespace Extensions.Yarp.Grpc.Service;
 public class CombinerService : ServerReflection.ServerReflectionBase
 {
     private readonly YarpConfig yarpConfig;
+    private readonly ILogger<CombinerService> logger;
 
-    public CombinerService(YarpConfig yarpConfig)
+    public CombinerService(YarpConfig yarpConfig, ILogger<CombinerService> logger)
     {
         this.yarpConfig = yarpConfig;
+        this.logger = logger;
     }
     public override async Task ServerReflectionInfo(IAsyncStreamReader<ServerReflectionRequest> requestStream, IServerStreamWriter<ServerReflectionResponse> responseStream, ServerCallContext context)
     {
@@ -35,7 +38,7 @@ public class CombinerService : ServerReflection.ServerReflectionBase
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine($"Exception occured {e}");
+                    logger.LogError($"Exception occured while getting reflection response for host {host}: {e.Message}");
                 }
             }
 

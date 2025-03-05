@@ -6,10 +6,13 @@ public class ServiceMonitor : BackgroundService
 {
     private readonly YarpConfig yarpConfig;
     private readonly InMemoryConfigProvider inMemoryConfigProvider;
-    public ServiceMonitor(YarpConfig yarpConfig, InMemoryConfigProvider inMemoryConfigProvider)
+    private readonly ILogger<ServiceMonitor> logger;
+
+    public ServiceMonitor(YarpConfig yarpConfig, InMemoryConfigProvider inMemoryConfigProvider, ILogger<ServiceMonitor> logger)
     {
         this.yarpConfig = yarpConfig;
         this.inMemoryConfigProvider = inMemoryConfigProvider;
+        this.logger = logger;
     }
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -19,10 +22,10 @@ public class ServiceMonitor : BackgroundService
             if (allServicesUp)
             {
                 inMemoryConfigProvider.Update(await yarpConfig.GetRoutes(), yarpConfig.GetClusters());
-                Console.WriteLine("Updated yarp config, stopping");
+                logger.LogInformation("Updated yarp config, stopping");
                 return;
             }
-            Console.WriteLine("Some grpc services are down, retrying");
+            logger.LogWarning("Some grpc services are down, retrying");
             await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken); // Check every x seconds
         }
     }

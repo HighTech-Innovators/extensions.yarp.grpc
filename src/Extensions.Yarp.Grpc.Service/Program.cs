@@ -3,6 +3,9 @@ using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Yarp.ReverseProxy.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+
 
 // Configure Kestrel to use HTTP/2
 builder.WebHost.ConfigureKestrel(options =>
