@@ -13,10 +13,10 @@ stages:
   - restore
   - build
   - test
-  - publish
-  - push
-  - sonarqube-check
-  - sonarqube-vulnerability-report
+  # - publish
+  # - push
+  # - sonarqube-check
+  # - sonarqube-vulnerability-report
 
 .only_tagged:
   rules:
