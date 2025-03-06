@@ -8,7 +8,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-namespace Extensions.Yarp.Grpc.Service;
+namespace Extensions.Yarp.Grpc;
 public class CombinerService : ServerReflection.ServerReflectionBase
 {
     private readonly YarpConfig yarpConfig;

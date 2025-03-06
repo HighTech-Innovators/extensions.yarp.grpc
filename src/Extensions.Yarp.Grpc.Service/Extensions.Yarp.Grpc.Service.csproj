@@ -12,4 +12,8 @@
   	<PackageReference Include="Yarp.ReverseProxy" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Extensions.Yarp.Grpc\Extensions.Yarp.Grpc.csproj" />
+  </ItemGroup>
+
 </Project>

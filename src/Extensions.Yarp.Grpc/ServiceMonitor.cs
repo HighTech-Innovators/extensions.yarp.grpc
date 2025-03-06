@@ -1,6 +1,8 @@
-﻿using Yarp.ReverseProxy.Configuration;
+﻿using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Yarp.ReverseProxy.Configuration;
 
-namespace Extensions.Yarp.Grpc.Service;
+namespace Extensions.Yarp.Grpc;
 
 public class ServiceMonitor : BackgroundService
 {

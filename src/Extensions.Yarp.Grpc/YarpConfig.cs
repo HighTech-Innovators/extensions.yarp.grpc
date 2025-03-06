@@ -4,8 +4,10 @@ using Yarp.ReverseProxy.Forwarder;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Primitives;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 
-namespace Extensions.Yarp.Grpc.Service;
+namespace Extensions.Yarp.Grpc;
 
 public class YarpConfig
 {
@@ -14,7 +16,7 @@ public class YarpConfig
     public List<string> Hosts { get; init; } = [];
     public Regex AllowedServiceRegex { get; init; }
 
-    public YarpConfig(IConfiguration configuration,ILogger<YarpConfig> logger)
+    public YarpConfig(IConfiguration configuration, ILogger<YarpConfig> logger)
     {
         var hostsConfig = configuration.GetSection("Hosts").Get<string[]>() ?? throw new Exception("Hosts must be provided");
         Hosts.AddRange(hostsConfig);

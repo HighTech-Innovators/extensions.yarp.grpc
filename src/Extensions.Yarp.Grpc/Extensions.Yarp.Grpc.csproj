@@ -6,4 +6,10 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Grpc.AspNetCore" />
+    <PackageReference Include="Grpc.Reflection" />
+    <PackageReference Include="Yarp.ReverseProxy" />
+  </ItemGroup>
+
 </Project>
