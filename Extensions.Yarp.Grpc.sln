@@ -7,6 +7,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Extensions.Yarp.Grpc", "src
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Extensions.Yarp.Grpc.Service", "src\Extensions.Yarp.Grpc.Service\Extensions.Yarp.Grpc.Service.csproj", "{34E9B4F0-BA1B-4F25-A30A-EC45C544C775}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestServerGreeter", "testapps\TestServerGreeter\TestServerGreeter.csproj", "{37239CA3-1129-433A-9DF9-404C74243AB2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestServerGreeterTwo", "testapps\TestServerGreeterTwo\TestServerGreeterTwo.csproj", "{1C5EB19C-88CD-465C-9925-8FFF703AF017}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +25,14 @@ Global
 		{34E9B4F0-BA1B-4F25-A30A-EC45C544C775}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{34E9B4F0-BA1B-4F25-A30A-EC45C544C775}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{34E9B4F0-BA1B-4F25-A30A-EC45C544C775}.Release|Any CPU.Build.0 = Release|Any CPU
+		{37239CA3-1129-433A-9DF9-404C74243AB2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{37239CA3-1129-433A-9DF9-404C74243AB2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{37239CA3-1129-433A-9DF9-404C74243AB2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{37239CA3-1129-433A-9DF9-404C74243AB2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1C5EB19C-88CD-465C-9925-8FFF703AF017}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1C5EB19C-88CD-465C-9925-8FFF703AF017}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1C5EB19C-88CD-465C-9925-8FFF703AF017}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1C5EB19C-88CD-465C-9925-8FFF703AF017}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
