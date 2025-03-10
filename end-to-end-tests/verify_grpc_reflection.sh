@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # Call the gRPC reflection endpoint
 response=$(grpcurl -plaintext localhost:8080 list)

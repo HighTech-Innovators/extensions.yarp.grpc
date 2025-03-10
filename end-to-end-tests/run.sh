@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 CI_JOB_ID=${CI_JOB_ID:-1}
 if [[ -z "$VERSION" ]]; then
