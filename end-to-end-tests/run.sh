@@ -30,10 +30,8 @@ docker compose --project-name $CI_JOB_ID up -d || cleanup_and_exit 'Test SETUP f
 
 sleep 5
 
-pwd
-ls
-chmod +x ./verify_grpc_reflection.sh
-./verify_grpc_reflection.sh
+SERVICE=tests
+docker compose --project-name $CI_JOB_ID up --exit-code-from $SERVICE --scale $SERVICE=1 $SERVICE
 exit_code=$?
 
 # SERVICE=tests

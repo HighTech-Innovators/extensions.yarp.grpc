@@ -1,4 +1,14 @@
 services:
+  tests:
+    build:
+      context: .
+      target: end-to-end-test
+      args:
+        REGISTRY_PREFIX: $REGISTRY_PREFIX
+    depends_on:
+      - yarpgrpc-proxy
+    deploy:
+      replicas: 0
   yarpgrpc-proxy:
     build:
       context: ..
