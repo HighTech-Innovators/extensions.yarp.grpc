@@ -31,7 +31,7 @@ sleep 5
 
 pwd
 ls
-chmod +x ./verify_grpc_reflection.sh
+chmod a+x ./verify_grpc_reflection.sh
 ./verify_grpc_reflection.sh
 exit_code=$?
 
