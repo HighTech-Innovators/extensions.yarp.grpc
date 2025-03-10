@@ -32,7 +32,7 @@ sleep 5
 pwd
 ls
 chmod +x ./verify_grpc_reflection.sh
-verify_grpc_reflection.sh
+bash verify_grpc_reflection.sh
 exit_code=$?
 
 # SERVICE=tests
