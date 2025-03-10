@@ -1,4 +1,5 @@
-#!/bin/sh
+#!/bin/bash
+
 CI_JOB_ID=${CI_JOB_ID:-1}
 if [[ -z "$VERSION" ]]; then
   export VERSION="1.1.1"
@@ -32,7 +33,7 @@ sleep 5
 pwd
 ls
 chmod +x ./verify_grpc_reflection.sh
-bash verify_grpc_reflection.sh
+./verify_grpc_reflection.sh
 exit_code=$?
 
 # SERVICE=tests
