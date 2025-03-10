@@ -29,7 +29,6 @@ docker compose --project-name $CI_JOB_ID up -d || cleanup_and_exit 'Test SETUP f
 
 sleep 5
 
-pwd
 chmod +x ./verify_grpc_reflection.sh
 ./verify_grpc_reflection.sh
 exit_code=$?
@@ -54,9 +53,6 @@ if [ $exit_code -eq 0 ]; then
 else
     echo -e "\033[0;31mTests failed.\033[0m"
 fi
-
-# Wait for user input before exiting
-read -p "Press any key to exit..."
 
 # Exit with the exit code from the tests container
 exit $exit_code
