@@ -29,6 +29,7 @@ docker compose --project-name $CI_JOB_ID up -d || cleanup_and_exit 'Test SETUP f
 
 sleep 5
 
+chmod +x ./verify_grpc_reflection.sh
 ./verify_grpc_reflection.sh
 exit_code=$?
 
