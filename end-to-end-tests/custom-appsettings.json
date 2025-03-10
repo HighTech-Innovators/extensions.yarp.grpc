@@ -1,0 +1,14 @@
+{
+    "Logging": {
+        "LogLevel": {
+            "Default": "Information",
+            "Microsoft.AspNetCore": "Warning"
+        }
+    },
+    "AllowedHosts": "*",
+    "Hosts": [
+        "http://grpc-greeter-one:8081",
+        "http://grpc-greeter-two:8082"
+    ],
+    "AllowedServiceRegex": ""    
+}

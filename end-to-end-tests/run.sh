@@ -16,6 +16,10 @@ cleanup_and_exit() {
     docker compose --project-name $CI_JOB_ID logs
     # Always bring down the Docker Compose setup
     docker compose --project-name $CI_JOB_ID down -v  --rmi local
+    
+    # Wait for user input before exiting
+    read -p "Press any key to exit..."
+
     exit $exit_code
 }
 
@@ -23,12 +27,17 @@ cleanup_and_exit() {
 docker compose --project-name $CI_JOB_ID build || cleanup_and_exit 'Test BUILD failed'
 docker compose --project-name $CI_JOB_ID up -d || cleanup_and_exit 'Test SETUP failed'
 
-SERVICE=tests
-docker compose --project-name $CI_JOB_ID up --exit-code-from $SERVICE --scale $SERVICE=1 $SERVICE
+sleep 5
+
+./verify_grpc_reflection.sh
 exit_code=$?
 
-# Show the exit code of the 'tests' container
-echo "Exit code from tests container: $exit_code"
+# SERVICE=tests
+# docker compose --project-name $CI_JOB_ID up --exit-code-from $SERVICE --scale $SERVICE=1 $SERVICE
+# exit_code=$?
+
+# # Show the exit code of the 'tests' container
+# echo "Exit code from tests container: $exit_code"
 
 # Display logs before shutting down
 echo "Displaying logs before shutting down the services:"
@@ -43,6 +52,9 @@ if [ $exit_code -eq 0 ]; then
 else
     echo -e "\033[0;31mTests failed.\033[0m"
 fi
+
+# Wait for user input before exiting
+read -p "Press any key to exit..."
 
 # Exit with the exit code from the tests container
 exit $exit_code

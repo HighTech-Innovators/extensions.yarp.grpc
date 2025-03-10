@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  yarpgrpc-proxy:
+    build:
+      context: ..
+      target: final-host
+      args:
+        DOCKERHOST: $DOCKER_HOST
+        VERSION: $VERSION
+        REGISTRY_PREFIX: $REGISTRY_PREFIX
+        PRIVATE_NUGET: $PRIVATE_NUGET
+        NUGET_PROXY: $NUGET_PROXY
+    ports:
+      - "8080:8080"
+    environment:
+      LOGGING__LOGLEVEL__DEFAULT: "Information"
+      LOGGING__LOGLEVEL__MICROSOFT__ASPNETCORE: "Warning"
+      ALLOWEDHOSTS: "*"
+      HOSTS__0: "http://grpc-greeter-one:8081"
+      HOSTS__1: "http://grpc-greeter-two:8082"
+      ALLOWEDSERVICEREGEX: ""
+    # volumes:
+      # - ./custom-appsettings.json:/bin/yarpgrpc/appsettings.json
+    depends_on:
+      - grpc-greeter-one
+      - grpc-greeter-two
+  grpc-greeter-one:
+    image: testservergreeter:latest
+    build:
+      context: ../testapps/TestServerGreeter/
+      # dockerfile: ../testapps/TestServerGreeter/Dockerfile
+    ports:
+      - "8081:8081"
+  grpc-greeter-two:
+    image: testservergreetertwo:latest
+    build:
+      context: ../testapps/TestServerGreeterTwo/
+      # dockerfile: ../testapps/TestServerGreeterTwo/Dockerfile
+    ports:
+      - "8082:8082"

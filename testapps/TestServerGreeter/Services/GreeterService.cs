@@ -1,9 +1,9 @@
 using Grpc.Core;
-using TestServerGreeter;
+using TestServerGreeterOne;
 
 namespace TestServerGreeter.Services;
 
-public class GreeterService : TestServerGreeter.TestServerGreeter.TestServerGreeterBase
+public class GreeterService : TestServerGreeterOne.TestServerGreeterOne.TestServerGreeterOneBase
 {
     private readonly ILogger<GreeterService> _logger;
     public GreeterService(ILogger<GreeterService> logger)

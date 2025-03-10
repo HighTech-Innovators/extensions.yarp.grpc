@@ -196,46 +196,6 @@ RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
       -o /pub/Host.Testserver\
       testapps/Testserver
 
-##
-## PUBLISH BENCHMARK TOOL
-##
-FROM releasebuild AS publish-benchmark
-ARG VERSION
-RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
-    dotnet publish\
-      --no-restore\
-      --no-build\
-      -c Release\
-      -p:DebugType=embedded\
-      -p:DebugSymbols=true\
-      -p:Deterministic=true\
-      -p:VERSION=${VERSION}\
-      -p:ServerGarbageCollection=false\
-      -p:InvariantGlobalization=true\
-      -p:EmitCompilerGeneratedFiles=true\
-      -o /pub/DtoServerBenchmark\
-      testapps/DtoServerBenchmark
-
-##
-## PUBLISH BENCHMARK TOOL
-##
-FROM releasebuild AS publish-reader-benchmark
-ARG VERSION
-RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
-    dotnet publish\
-      --no-restore\
-      --no-build\
-      -c Release\
-      -p:DebugType=embedded\
-      -p:DebugSymbols=true\
-      -p:Deterministic=true\
-      -p:VERSION=${VERSION}\
-      -p:ServerGarbageCollection=false\
-      -p:InvariantGlobalization=true\
-      -p:EmitCompilerGeneratedFiles=true\
-      -o /pub/DtoServerReaderBenchmark\
-      testapps/DtoServerReaderBenchmark
-
 ###########################################################################################################
 ###########################################################################################################
 ###                                                                                                    ####
@@ -247,14 +207,14 @@ RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
 #
 #  Final image - shared base
 #
-FROM aspnet8 AS final-dtoserver-base
+FROM aspnet8 AS final-yarpgrpc-base
 
 # import curl from current repository image
 COPY --from=curl /bin/curl /bin/curl
 
 # Docs: <https://docs.docker.com/engine/reference/builder/#healthcheck>
 HEALTHCHECK --interval=5s --timeout=2s --retries=2 --start-period=2s CMD [ \
-    "curl", "--fail", "http://127.0.0.1:18080/" \
+    "curl", "--fail", "http://127.0.0.1:8080/" \
 ]
 
 ENV COMPlus_EnableDiagnostics=0
@@ -262,49 +222,26 @@ ENV TEMP_FILE_DIRECTORY=/temp_file_directory
 RUN mkdir -p $TEMP_FILE_DIRECTORY
 VOLUME $TEMP_FILE_DIRECTORY
 
-EXPOSE 10080/tcp
-EXPOSE 18080/tcp
-
-#
-#  Final image - BENCHMARK TOOL
-#
-FROM aspnet8 AS final-benchmark
-
-ENV COMPlus_EnableDiagnostics=0
-
-COPY --from=publish-benchmark /pub/DtoServerBenchmark/ /bin/DtoServerBenchmark/
-
-ENTRYPOINT ["/bin/DtoServerBenchmark/DtoServerBenchmark"]
-
-#
-#  Final image - BENCHMARK TOOL
-#
-FROM aspnet8 AS final-reader-benchmark
-
-ENV COMPlus_EnableDiagnostics=0
-
-COPY --from=publish-reader-benchmark /pub/DtoServerReaderBenchmark/ /bin/DtoServerReaderBenchmark/
-
-ENTRYPOINT ["/bin/DtoServerReaderBenchmark/DtoServerReaderBenchmark"]
+EXPOSE 8080/tcp
 
 #
 #  Final image - Testcontainer
 #
-FROM final-dtoserver-base AS final-testcontainer
+FROM final-yarpgrpc-base AS final-testcontainer
 
-COPY --from=publish-testcontainer /pub/Host.Testserver/ /bin/dtoserver/
+COPY --from=publish-testcontainer /pub/Host.Testserver/ /bin/yarpgrpc/
 
 VOLUME /data
-ENTRYPOINT ["/bin/dtoserver/Host.Testserver"]
+ENTRYPOINT ["/bin/yarpgrpc/Host.Testserver"]
 
 #
 #  Final image - E2E Test Host
 #
-FROM final-dtoserver-base AS final-host
+FROM final-yarpgrpc-base AS final-host
 
-COPY --from=publish-host /pub/Host/ /bin/dtoserver/
+COPY --from=publish-host /pub/Host/ /bin/yarpgrpc/
 
 VOLUME /data
 
 # Define the command to run your main application
-ENTRYPOINT ["dotnet", "/bin/dtoserver/Host.dll"]
+ENTRYPOINT ["dotnet", "/bin/yarpgrpc/Host.dll"]

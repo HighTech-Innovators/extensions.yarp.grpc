@@ -1,6 +1,16 @@
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using TestServerGreeter.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configure Kestrel to use HTTP/2
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.ListenAnyIP(8082, listenOptions =>
+    {
+        listenOptions.Protocols = HttpProtocols.Http2;
+    });
+});
 
 // Add services to the container.
 builder.Services.AddGrpc();

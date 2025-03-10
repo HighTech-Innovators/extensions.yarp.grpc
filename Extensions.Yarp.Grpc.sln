@@ -3,13 +3,13 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.12.35707.178
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Extensions.Yarp.Grpc", "src\Extensions.Yarp.Grpc\Extensions.Yarp.Grpc.csproj", "{911AC500-F89A-4913-A79A-37978F2C52F9}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Extensions.Yarp.Grpc.Service", "src\Extensions.Yarp.Grpc.Service\Extensions.Yarp.Grpc.Service.csproj", "{34E9B4F0-BA1B-4F25-A30A-EC45C544C775}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestServerGreeter", "testapps\TestServerGreeter\TestServerGreeter.csproj", "{37239CA3-1129-433A-9DF9-404C74243AB2}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestServerGreeterTwo", "testapps\TestServerGreeterTwo\TestServerGreeterTwo.csproj", "{1C5EB19C-88CD-465C-9925-8FFF703AF017}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Extensions.Yarp.Grpc", "src\Extensions.Yarp.Grpc\Extensions.Yarp.Grpc.csproj", "{34079658-817A-4E7D-B319-78C5A8799977}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Host", "testapps\Host\Host.csproj", "{3D9FCD36-3105-49C6-9E0D-64FBB48CAE13}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -17,14 +17,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{911AC500-F89A-4913-A79A-37978F2C52F9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{911AC500-F89A-4913-A79A-37978F2C52F9}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{911AC500-F89A-4913-A79A-37978F2C52F9}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{911AC500-F89A-4913-A79A-37978F2C52F9}.Release|Any CPU.Build.0 = Release|Any CPU
-		{34E9B4F0-BA1B-4F25-A30A-EC45C544C775}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{34E9B4F0-BA1B-4F25-A30A-EC45C544C775}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{34E9B4F0-BA1B-4F25-A30A-EC45C544C775}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{34E9B4F0-BA1B-4F25-A30A-EC45C544C775}.Release|Any CPU.Build.0 = Release|Any CPU
 		{37239CA3-1129-433A-9DF9-404C74243AB2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{37239CA3-1129-433A-9DF9-404C74243AB2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{37239CA3-1129-433A-9DF9-404C74243AB2}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -33,6 +25,14 @@ Global
 		{1C5EB19C-88CD-465C-9925-8FFF703AF017}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1C5EB19C-88CD-465C-9925-8FFF703AF017}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1C5EB19C-88CD-465C-9925-8FFF703AF017}.Release|Any CPU.Build.0 = Release|Any CPU
+		{34079658-817A-4E7D-B319-78C5A8799977}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{34079658-817A-4E7D-B319-78C5A8799977}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{34079658-817A-4E7D-B319-78C5A8799977}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{34079658-817A-4E7D-B319-78C5A8799977}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3D9FCD36-3105-49C6-9E0D-64FBB48CAE13}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3D9FCD36-3105-49C6-9E0D-64FBB48CAE13}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3D9FCD36-3105-49C6-9E0D-64FBB48CAE13}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3D9FCD36-3105-49C6-9E0D-64FBB48CAE13}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
