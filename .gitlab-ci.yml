@@ -113,15 +113,15 @@ dotnet test:
     - dotnet build
 
 
-# e2e test:
-#   stage: test
-#   needs:
-#     - dotnet build
-#   script:
-#     - cd end-to-end-tests
-#     - chmod +x ./run.sh
-#     - VERSION="${CI_COMMIT_TAG:-0.0.0-cibuild}" ./run.sh
-#   image: ${DOCKER_BUILD_IMAGE}
+e2e test:
+  stage: test
+  needs:
+    - dotnet build
+  script:
+    - cd end-to-end-tests
+    - chmod +x ./run.sh
+    - VERSION="${CI_COMMIT_TAG:-0.0.0-cibuild}" ./run.sh
+  image: ${DOCKER_BUILD_IMAGE}
 
 # ###########################################################################################################
 # ###########################################################################################################
