@@ -61,7 +61,7 @@ RUN dotnet restore
 
 # This copy is for sonar to determine what issues were fixed or not
 COPY .git /code/.git
-ENV sonar_coverage_exclusions="**/RxDatasets/Reporting/**/*,**/testapps/**/*,**/tst/**/*"
+ENV sonar_coverage_exclusions="**/testapps/**/*,**/tst/**/*"
 
 # handle branch vs merge request contexts 
 RUN set -e; \
