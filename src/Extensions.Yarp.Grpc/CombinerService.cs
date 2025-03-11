@@ -47,7 +47,7 @@ public class CombinerService : ServerReflection.ServerReflectionBase
         }
     }
 
-    private void RemoveNotAllowedServices(ref List<ServerReflectionResponse> responses, Regex allowedServiceRegex)
+    public static void RemoveNotAllowedServices(ref List<ServerReflectionResponse> responses, Regex allowedServiceRegex)
     {
         for (int i = 0; i < responses.Count; i++)
         {
