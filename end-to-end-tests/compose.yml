@@ -32,7 +32,7 @@ services:
       # - ./custom-appsettings.json:/bin/yarpgrpc/appsettings.json
     depends_on:
       - grpc-greeter-one
-      - grpc-greeter-two
+      # - grpc-greeter-two
   grpc-greeter-one:
     image: testservergreeter:latest
     build:
