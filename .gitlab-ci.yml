@@ -8,6 +8,9 @@ variables:
   DOCKER_BUILD_IMAGE: "${REGISTRY_PREFIX}docker:cli"
   SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"  # Defines the location of the analysis task cache
   GIT_DEPTH: "0"  # Tells git to fetch all the branches of the project, required by the analysis task
+  CONTAINER_IMAGE_TAG: "${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG}"
+  RELEASE_IMAGE_TAG: "${CI_REGISTRY_IMAGE}:latest"
+
 
 stages:
   - restore
@@ -53,6 +56,33 @@ stages:
       -f Dockerfile
       .
   image: ${DOCKER_BUILD_IMAGE}
+
+# .docker_build_target_with_tag:
+#   cache: []
+#   script:   
+#     - test -n "$DOCKER_HOST" || ( echo "Error in gitlab-ci config - variable DOCKER_HOST is required but is blank" && exit 1 )
+#     - test -n "$DOCKERFILE_TARGET" || ( echo "Error in gitlab-ci config - variable DOCKERFILE_TARGET is required but is blank" && exit 1 )
+#     - test -n "$REGISTRY_PREFIX" || ( echo "Info, in gitlab-ci config - variable REGISTRY_PREFIX is not filled")
+#     - test -n "$PRIVATE_NUGET" || ( echo "Info, in gitlab-ci config - variable PRIVATE_NUGET is not filled")
+#     - test -n "$NUGET_PROXY" || ( echo "Info, in gitlab-ci config - variable NUGET_PROXY is not filled")
+#     - VERSION="${CI_COMMIT_TAG:-0.0.0-cibuild }"
+#     - >
+#       docker build
+#       --pull
+#       --build-arg DOCKER_HOST=$DOCKER_HOST
+#       --build-arg RunExternalProvidersTests=true
+#       --build-arg VERSION=$VERSION
+#       --build-arg REGISTRY_PREFIX=$REGISTRY_PREFIX
+#       --build-arg PRIVATE_NUGET=$PRIVATE_NUGET
+#       --build-arg NUGET_PROXY=$NUGET_PROXY
+#       --build-arg TARGET_NUGET=$TARGET_NUGET
+#       --build-arg TARGET_NUGET_APIKEY=$TARGET_NUGET_APIKEY
+#       --target ${DOCKERFILE_TARGET}
+#       -f Dockerfile
+#       -t $CONTAINER_IMAGE_TAG
+#       RELEASE_IMAGE_TAG: "${CI_REGISTRY_IMAGE}:${CI_COMMIT_TAG}"
+#       .
+#   image: ${DOCKER_BUILD_IMAGE}
 
 .sonar_docker_build_target:
   cache: []
@@ -184,7 +214,11 @@ docker image push:
   needs:
     - docker image build
   script:
-    - docker push ${REGISTRY_PREFIX}final-host:latest
+    - docker pull $CONTAINER_IMAGE_TAG
+    - docker tag $CONTAINER_IMAGE_TAG $RELEASE_IMAGE_TAG
+    - docker push $RELEASE_IMAGE_TAG
+  image: ${DOCKER_BUILD_IMAGE}
+
 
 # ###########################################################################################################
 # ###########################################################################################################
