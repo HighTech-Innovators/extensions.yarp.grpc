@@ -15,8 +15,8 @@ stages:
   - test
   - publish
   # - push
-  # - sonarqube-check
-  # - sonarqube-vulnerability-report
+  - sonarqube-check
+  - sonarqube-vulnerability-report
 
 .only_tagged:
   rules:
@@ -156,49 +156,49 @@ dotnet pack:
 #     - dotnet test
 #     - e2e test
 
-# sonarqube-check:
-#   extends:
-#     - .sonar_docker_build_target
-#   variables:
-#     DOCKERFILE_TARGET: sonarqube-check
-#   stage: sonarqube-check
-#   dependencies:
-#     - dotnet test
-#   allow_failure: false
-#   only:
-#     - merge_requests
-#     - master
-#     - main
-#     - develop
+sonarqube-check:
+  extends:
+    - .sonar_docker_build_target
+  variables:
+    DOCKERFILE_TARGET: sonarqube-check
+  stage: sonarqube-check
+  dependencies:
+    - dotnet test
+  allow_failure: false
+  only:
+    - merge_requests
+    - master
+    - main
+    - develop
 
-# sonarqube-vulnerability-report:
-#   script:   
-#     - >
-#       docker buildx build
-#       --pull
-#       --build-arg SONAR_PROJECT_KEY=$SONAR_PROJECT_KEY
-#       --build-arg SONAR_HOST_URL=$SONAR_HOST_URL
-#       --build-arg SONAR_TOKEN=$SONAR_TOKEN
-#       --build-arg CI_COMMIT_BRANCH=$CI_COMMIT_BRANCH
-#       --build-arg CI_MERGE_REQUEST_IID=$CI_MERGE_REQUEST_IID
-#       --target ${DOCKERFILE_TARGET}
-#       --output type=local,dest=./
-#       -f sonar.Dockerfile
-#       .
-#   image: ${DOCKER_BUILD_IMAGE}
-#   variables:
-#     DOCKERFILE_TARGET: sonar-report-downloader
-#     DOCKER_BUILDKIT: 1
-#   stage: sonarqube-vulnerability-report
-#   needs:
-#     - sonarqube-check
-#   allow_failure: true
-#   only:
-#     - merge_requests
-#     - master
-#     - main
-#     - develop
-#   artifacts:
-#     expire_in: 1 day
-#     reports:
-#       sast: ./gl-sast-sonar-report.json 
+sonarqube-vulnerability-report:
+  script:   
+    - >
+      docker buildx build
+      --pull
+      --build-arg SONAR_PROJECT_KEY=$SONAR_PROJECT_KEY
+      --build-arg SONAR_HOST_URL=$SONAR_HOST_URL
+      --build-arg SONAR_TOKEN=$SONAR_TOKEN
+      --build-arg CI_COMMIT_BRANCH=$CI_COMMIT_BRANCH
+      --build-arg CI_MERGE_REQUEST_IID=$CI_MERGE_REQUEST_IID
+      --target ${DOCKERFILE_TARGET}
+      --output type=local,dest=./
+      -f sonar.Dockerfile
+      .
+  image: ${DOCKER_BUILD_IMAGE}
+  variables:
+    DOCKERFILE_TARGET: sonar-report-downloader
+    DOCKER_BUILDKIT: 1
+  stage: sonarqube-vulnerability-report
+  needs:
+    - sonarqube-check
+  allow_failure: true
+  only:
+    - merge_requests
+    - master
+    - main
+    - develop
+  artifacts:
+    expire_in: 1 day
+    reports:
+      sast: ./gl-sast-sonar-report.json 
