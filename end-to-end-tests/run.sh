@@ -34,12 +34,8 @@ SERVICE=tests
 docker compose --project-name $CI_JOB_ID up --exit-code-from $SERVICE --scale $SERVICE=1 $SERVICE
 exit_code=$?
 
-# SERVICE=tests
-# docker compose --project-name $CI_JOB_ID up --exit-code-from $SERVICE --scale $SERVICE=1 $SERVICE
-# exit_code=$?
-
-# # Show the exit code of the 'tests' container
-# echo "Exit code from tests container: $exit_code"
+# Show the exit code of the 'tests' container
+echo "Exit code from tests container: $exit_code"
 
 # Display logs before shutting down
 echo "Displaying logs before shutting down the services:"

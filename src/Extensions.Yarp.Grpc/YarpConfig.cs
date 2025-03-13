@@ -9,12 +9,12 @@ using Microsoft.Extensions.Configuration;
 
 namespace Extensions.Yarp.Grpc;
 
-public class YarpConfig
+internal class YarpConfig
 {
     private readonly ILogger<YarpConfig> logger;
 
-    public List<string> Hosts { get; init; } = [];
-    public Regex AllowedServiceRegex { get; init; }
+    internal List<string> Hosts { get; init; } = [];
+    internal Regex AllowedServiceRegex { get; init; }
 
     public YarpConfig(IConfiguration configuration, ILogger<YarpConfig> logger)
     {
@@ -25,7 +25,7 @@ public class YarpConfig
         this.logger = logger;
     }
 
-    public async Task<IReadOnlyList<RouteConfig>> GetRoutes()
+    internal async Task<IReadOnlyList<RouteConfig>> GetRoutes()
     {
         var routes = new List<RouteConfig>();
         var servicesToHosts = await GetServiceNamesFromReflection();
@@ -48,8 +48,8 @@ public class YarpConfig
         return routes;
     }
 
-    public record ServicesToHost(string Host, List<string> ServiceNames);
-    public async Task<List<ServicesToHost>> GetServiceNamesFromReflection()
+    internal record ServicesToHost(string Host, List<string> ServiceNames);
+    internal async Task<List<ServicesToHost>> GetServiceNamesFromReflection()
     {
         var result = new List<ServicesToHost>();
         foreach (var host in Hosts)
@@ -78,7 +78,7 @@ public class YarpConfig
         return result;
     }
 
-    public async Task<bool> AreAllServicesUp()
+    internal async Task<bool> AreAllServicesUp()
     {
         try
         {
@@ -97,7 +97,7 @@ public class YarpConfig
         }
     }
 
-    public IReadOnlyList<ClusterConfig> GetClusters()
+    internal IReadOnlyList<ClusterConfig> GetClusters()
     {
         var clusters = new List<ClusterConfig>();
 

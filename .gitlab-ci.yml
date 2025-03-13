@@ -14,7 +14,7 @@ stages:
   - build
   - test
   - publish
-  # - push
+  - push
   - sonarqube-check
   - sonarqube-vulnerability-report
 
@@ -141,20 +141,20 @@ dotnet pack:
   needs:
     - dotnet build
 
-# dotnet nuget push:
-#   before_script:
-#   - test -n "$TARGET_NUGET" || ( echo "Error, in gitlab-ci config - variable TARGET_NUGET is not filled" && exit 1)
-#   - test -n "$TARGET_NUGET_APIKEY" || ( echo "Error, in gitlab-ci config - variable TARGET_NUGET_APIKEY is not filled" && exit 1)
-#   extends:
-#     - .only_tagged
-#     - .docker_build_target
-#   variables:
-#     DOCKERFILE_TARGET: nugetpush
-#   stage: push
-#   needs:
-#     - dotnet pack
-#     - dotnet test
-#     - e2e test
+dotnet nuget push:
+  before_script:
+  - test -n "$TARGET_NUGET" || ( echo "Error, in gitlab-ci config - variable TARGET_NUGET is not filled" && exit 1)
+  - test -n "$TARGET_NUGET_APIKEY" || ( echo "Error, in gitlab-ci config - variable TARGET_NUGET_APIKEY is not filled" && exit 1)
+  extends:
+    - .only_tagged
+    - .docker_build_target
+  variables:
+    DOCKERFILE_TARGET: nugetpush
+  stage: push
+  needs:
+    - dotnet pack
+    - dotnet test
+    - e2e test
 
 sonarqube-check:
   extends:

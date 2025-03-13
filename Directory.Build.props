@@ -17,7 +17,7 @@
     <Copyright>HighTech Innovators © 2025</Copyright>
     <Authors>Bart de Boer, Florin Deleanu</Authors>
     <Company>HighTech Innovators</Company>
-    <Description>A library that extends YARP functionality to combine GRPC reflections.</Description>
+    <Description>A library that extends YARP functionality to combine gRPC reflection endpoints.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageIcon>icon.png</PackageIcon>
   </PropertyGroup>

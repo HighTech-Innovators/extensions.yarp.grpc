@@ -13,41 +13,26 @@ namespace Extensions.Yarp.Grpc
 {
     public static class DI
     {
-        public static void ConfigureServices(IServiceCollection builderServices)
+        public static void AddAutoGrpcReverseProxy(this WebApplicationBuilder builder)
         {
-            builderServices.AddGrpc();
-            builderServices.AddScoped<CombinerService>();
-            builderServices.AddSingleton<YarpConfig>();
+            builder.Services.AddGrpc();
+            builder.Services.AddScoped<CombinerService>();
+            builder.Services.AddSingleton<YarpConfig>();
 
-            // Add YARP services
-            var logger = builderServices.BuildServiceProvider().GetRequiredService<ILogger<YarpConfig>>();
-            var builderConfig = builderServices.BuildServiceProvider().GetRequiredService<IConfiguration>();
-            var yarpConfig = new YarpConfig(builderConfig, logger);
-            var inMemory = new InMemoryConfigProvider(yarpConfig.GetRoutes().Result, yarpConfig.GetClusters());
-            builderServices.AddSingleton<IProxyConfigProvider>(inMemory);
-            builderServices.AddReverseProxy();
-            builderServices.AddSingleton(inMemory);
+            //Add YARP services
+            builder.Services.AddReverseProxy();
 
-            ////todo why doesnt this update the yarp config?
-            //// Add YARP services
-            //builderServices.AddReverseProxy();
+            builder.Services.AddSingleton<IProxyConfigProvider>(s => s.GetRequiredService<InMemoryConfigProvider>());
+            builder.Services.AddSingleton<InMemoryConfigProvider>(serviceProvider =>
+            {
+                var yarpConfig = serviceProvider.GetRequiredService<YarpConfig>();
+                return new InMemoryConfigProvider(yarpConfig.GetRoutes().Result, yarpConfig.GetClusters());
+            });
 
-            //builderServices.AddSingleton<IProxyConfigProvider>(serviceProvider =>
-            //{
-            //    var yarpConfig = serviceProvider.GetRequiredService<YarpConfig>();
-            //    var inMemory = new InMemoryConfigProvider(yarpConfig.GetRoutes().Result, yarpConfig.GetClusters());
-            //    return inMemory;
-            //});
-            //builderServices.AddSingleton(serviceProvider =>
-            //{
-            //    var yarpConfig = serviceProvider.GetRequiredService<YarpConfig>();
-            //    return new InMemoryConfigProvider(yarpConfig.GetRoutes().Result, yarpConfig.GetClusters());
-            //});
-
-            builderServices.AddHostedService<ServiceMonitor>();
+            builder.Services.AddHostedService<ServiceMonitor>();
         }
 
-        public static void ConfigureApp(WebApplication app)
+        public static void MapAutoGrpcReverseProxy(this WebApplication app)
         {
             // Use YARP reverse proxy
             app.MapReverseProxy();

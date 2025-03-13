@@ -4,7 +4,7 @@ using Yarp.ReverseProxy.Configuration;
 
 namespace Extensions.Yarp.Grpc;
 
-public class ServiceMonitor : BackgroundService
+internal class ServiceMonitor : BackgroundService
 {
     private readonly YarpConfig yarpConfig;
     private readonly InMemoryConfigProvider inMemoryConfigProvider;

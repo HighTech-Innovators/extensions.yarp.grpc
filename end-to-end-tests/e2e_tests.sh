@@ -10,6 +10,7 @@ fi
 server1=$1
 
 # Function to check the gRPC reflection endpoint
+# shellcheck disable=SC2317
 check_grpc_reflection() {
   response=$(grpcurl -plaintext $server1 list)
   echo "Response from gRPC reflection endpoint: $response"
@@ -27,6 +28,7 @@ check_grpc_reflection() {
 }
 
 # checks the routing works for both greeters
+# shellcheck disable=SC2317
 verify_routing_works(){
   echo "Checking routing works for both greeters..."
   response1=$(grpcurl -plaintext $server1 testGreet.TestServerGreeterOne.SayHelloOne)
@@ -76,25 +78,3 @@ fi
 retry 4 verify_routing_works
 routing_result=$?
 exit $routing_result
-
-# # Retry logic
-# max_attempts=4
-# attempt=1
-# while [[ $attempt -le $max_attempts ]]; do
-#   echo "Attempt $attempt of $max_attempts..."
-#   check_grpc_reflection
-#   result=$?
-#   if [[ $result -eq 0 ]]; then
-#     verify_routing_works
-#     routing_result=$?
-#     exit $routing_result
-#   elif [[ $result -eq 1 ]]; then
-#     exit 1
-#   fi
-#   echo "Retrying in 10 seconds..."
-#   sleep 10
-#   attempt=$((attempt + 1))
-# done
-
-# echo "All attempts failed."
-# exit 1

@@ -15,10 +15,10 @@ builder.WebHost.ConfigureKestrel(options =>
     });
 });
 
-Extensions.Yarp.Grpc.DI.ConfigureServices(builder.Services);
+builder.AddAutoGrpcReverseProxy();
 
 var app = builder.Build();
 
-Extensions.Yarp.Grpc.DI.ConfigureApp(app);
+app.MapAutoGrpcReverseProxy();
 
 app.Run();

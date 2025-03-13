@@ -9,7 +9,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace Extensions.Yarp.Grpc;
-public class CombinerService : ServerReflection.ServerReflectionBase
+internal class CombinerService : ServerReflection.ServerReflectionBase
 {
     private readonly YarpConfig yarpConfig;
     private readonly ILogger<CombinerService> logger;
@@ -47,7 +47,7 @@ public class CombinerService : ServerReflection.ServerReflectionBase
         }
     }
 
-    public static void RemoveNotAllowedServices(ref List<ServerReflectionResponse> responses, Regex allowedServiceRegex)
+    internal static void RemoveNotAllowedServices(ref List<ServerReflectionResponse> responses, Regex allowedServiceRegex)
     {
         for (int i = 0; i < responses.Count; i++)
         {
@@ -72,7 +72,7 @@ public class CombinerService : ServerReflection.ServerReflectionBase
         }
     }
 
-    public static async Task<List<ServerReflectionResponse>> GetReflectionResponses(string adr, ServerReflectionRequest request)
+    internal static async Task<List<ServerReflectionResponse>> GetReflectionResponses(string adr, ServerReflectionRequest request)
     {
         var channel = GrpcChannel.ForAddress(adr);
         var client = new ServerReflection.ServerReflectionClient(channel);
