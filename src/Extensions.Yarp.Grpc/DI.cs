@@ -16,8 +16,9 @@ namespace Extensions.Yarp.Grpc
         public static void AddAutoGrpcReverseProxy(this WebApplicationBuilder builder)
         {
             builder.Services.AddGrpc();
-            builder.Services.AddScoped<CombinerService>();
+            builder.Services.AddSingleton<CombinerService>();
             builder.Services.AddSingleton<YarpConfig>();
+            builder.Services.AddSingleton<AppConfig>();
 
             //Add YARP services
             builder.Services.AddReverseProxy();

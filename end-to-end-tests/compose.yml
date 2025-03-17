@@ -19,8 +19,8 @@ services:
         REGISTRY_PREFIX: $REGISTRY_PREFIX
         PRIVATE_NUGET: $PRIVATE_NUGET
         NUGET_PROXY: $NUGET_PROXY
-    ports:
-      - "8080:8080"
+    # ports:
+    #   - "8080:8080"
     environment:
       LOGGING__LOGLEVEL__DEFAULT: "Information"
       LOGGING__LOGLEVEL__MICROSOFT__ASPNETCORE: "Warning"
@@ -34,11 +34,11 @@ services:
     image: testservergreeter:latest
     build:
       context: ../testapps/TestServerGreeter/
-    ports:
-      - "8081:8081"
+    # ports:
+    #   - "8081:8081"
   grpc-greeter-two:
     image: testservergreetertwo:latest
     build:
       context: ../testapps/TestServerGreeterTwo/
-    ports:
-      - "8082:8082"
+    # ports:
+    #   - "8082:8082"

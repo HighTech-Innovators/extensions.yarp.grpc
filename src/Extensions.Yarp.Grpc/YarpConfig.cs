@@ -11,18 +11,15 @@ namespace Extensions.Yarp.Grpc;
 
 internal class YarpConfig
 {
+    private readonly AppConfig appConfig;
     private readonly ILogger<YarpConfig> logger;
+    private readonly CombinerService combinerService;
 
-    internal List<string> Hosts { get; init; } = [];
-    internal Regex AllowedServiceRegex { get; init; }
-
-    public YarpConfig(IConfiguration configuration, ILogger<YarpConfig> logger)
+    public YarpConfig(AppConfig appConfig,ILogger<YarpConfig> logger, CombinerService combinerService)
     {
-        var hostsConfig = configuration.GetSection("Hosts").Get<string[]>() ?? throw new Exception("Hosts must be provided");
-        Hosts.AddRange(hostsConfig);
-        var regexConfig = configuration.GetSection("AllowedServiceRegex").Get<string>() ?? throw new Exception("AllowedServiceRegex must be provided");
-        AllowedServiceRegex = new Regex(regexConfig);
+        this.appConfig = appConfig;
         this.logger = logger;
+        this.combinerService = combinerService;
     }
 
     internal async Task<IReadOnlyList<RouteConfig>> GetRoutes()
@@ -52,20 +49,20 @@ internal class YarpConfig
     internal async Task<List<ServicesToHost>> GetServiceNamesFromReflection()
     {
         var result = new List<ServicesToHost>();
-        foreach (var host in Hosts)
+        foreach (var host in appConfig.Hosts)
         {
             try
             {
                 var request = new ServerReflectionRequest();
                 request.ListServices = "*";
-                var responses = await CombinerService.GetReflectionResponses(host, request);
+                var responses = await combinerService.GetReflectionResponses(host, request);
 
                 foreach (var response in responses)
                 {
                     var names = response.ListServicesResponse.Service.Select(serviceResp => $"{serviceResp.Name}");
                     var noReflection = names.Where(name => !name.Contains("reflection"));
 
-                    var filtered = noReflection.Where(name => AllowedServiceRegex.IsMatch(name));
+                    var filtered = noReflection.Where(name => appConfig.AllowedServiceRegex.IsMatch(name));
 
                     result.Add(new ServicesToHost(host, filtered.ToList()));
                 }
@@ -82,11 +79,11 @@ internal class YarpConfig
     {
         try
         {
-            foreach (var host in Hosts)
+            foreach (var host in appConfig.Hosts)
             {
                 var request = new ServerReflectionRequest();
                 request.ListServices = "*";
-                var responses = await CombinerService.GetReflectionResponses(host, request);
+                var responses = await combinerService.GetReflectionResponses(host, request);
 
             }
             return true;
@@ -101,7 +98,7 @@ internal class YarpConfig
     {
         var clusters = new List<ClusterConfig>();
 
-        foreach (var host in Hosts)
+        foreach (var host in appConfig.Hosts)
         {
             clusters.Add(new ClusterConfig
             {

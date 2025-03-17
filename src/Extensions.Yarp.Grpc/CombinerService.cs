@@ -11,28 +11,39 @@ using System.Threading.Tasks;
 namespace Extensions.Yarp.Grpc;
 internal class CombinerService : ServerReflection.ServerReflectionBase
 {
-    private readonly YarpConfig yarpConfig;
+    private readonly AppConfig appConfig;
     private readonly ILogger<CombinerService> logger;
+    private const int CHANNEL_TIMEOUT_MILLIS = 500;
+    private readonly Dictionary<string,GrpcChannel> channels= [];
 
-    public CombinerService(YarpConfig yarpConfig, ILogger<CombinerService> logger)
+    public CombinerService(AppConfig appConfig, ILogger<CombinerService> logger)
     {
-        this.yarpConfig = yarpConfig;
+        this.appConfig = appConfig;
         this.logger = logger;
+        var hosts= appConfig.Hosts;
+        foreach (var host in hosts)
+        {
+            channels[host] = GrpcChannel.ForAddress(host, new GrpcChannelOptions
+            {
+                HttpHandler = new SocketsHttpHandler
+                {
+                    ConnectTimeout = TimeSpan.FromMilliseconds(CHANNEL_TIMEOUT_MILLIS)
+                }
+            });
+        }
     }
     public override async Task ServerReflectionInfo(IAsyncStreamReader<ServerReflectionRequest> requestStream, IServerStreamWriter<ServerReflectionResponse> responseStream, ServerCallContext context)
     {
         await foreach (var request in requestStream.ReadAllAsync())
         {
-            var hosts = yarpConfig.Hosts;
-
             var returnedResponses = new List<ServerReflectionResponse>();
-            foreach (var host in hosts)
+            foreach (var host in appConfig.Hosts)
             {
                 try
                 {
                     var responses = await GetReflectionResponses(host, request);
 
-                    RemoveNotAllowedServices(ref responses, yarpConfig.AllowedServiceRegex);
+                    RemoveNotAllowedServices(ref responses, appConfig.AllowedServiceRegex);
 
                     returnedResponses.AddRange(responses);
                 }
@@ -72,9 +83,9 @@ internal class CombinerService : ServerReflection.ServerReflectionBase
         }
     }
 
-    internal static async Task<List<ServerReflectionResponse>> GetReflectionResponses(string adr, ServerReflectionRequest request)
+    internal async Task<List<ServerReflectionResponse>> GetReflectionResponses(string adr, ServerReflectionRequest request)
     {
-        var channel = GrpcChannel.ForAddress(adr);
+        var channel = channels[adr];
         var client = new ServerReflection.ServerReflectionClient(channel);
 
         var responses = new List<ServerReflectionResponse>();

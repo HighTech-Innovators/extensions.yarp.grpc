@@ -24,7 +24,7 @@ internal class ServiceMonitor : BackgroundService
             if (allServicesUp)
             {
                 inMemoryConfigProvider.Update(await yarpConfig.GetRoutes(), yarpConfig.GetClusters());
-                logger.LogInformation("Updated yarp config, stopping");
+                logger.LogInformation("Updated yarp config, stopping retrying");
                 return;
             }
             logger.LogWarning("Some grpc services are down, retrying");
