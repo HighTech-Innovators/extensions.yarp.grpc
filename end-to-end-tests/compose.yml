@@ -28,6 +28,8 @@ services:
       YARPGRPC__HOSTS__0: "http://grpc-greeter-one:8081"
       YARPGRPC__HOSTS__1: "http://grpc-greeter-two:8082"
       YARPGRPC__ALLOWEDSERVICEREGEX: ""
+    # volumes don't work by default on gitlab CI because of DID 
+      # https://gitlab.com/gitlab-org/gitlab-foss/-/issues/41227
     # volumes:
       # - ./yarpgrpc.json:/config/yarpgrpc.json
     depends_on:
