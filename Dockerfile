@@ -1,10 +1,11 @@
 # REFS
 # Optional support for using a private 'proxy' registry
 ARG REGISTRY_PREFIX=
-FROM ${REGISTRY_PREFIX}mcr.microsoft.com/dotnet/sdk:8.0 AS sdk8
+# FROM ${REGISTRY_PREFIX}mcr.microsoft.com/dotnet/sdk:8.0 AS sdk8
 FROM ${REGISTRY_PREFIX}mcr.microsoft.com/dotnet/aspnet:8.0 AS aspnet8
 FROM ${REGISTRY_PREFIX}mcr.microsoft.com/dotnet/runtime:8.0 AS runtime8
 FROM ${REGISTRY_PREFIX}ghcr.io/tarampampam/curl:8.12.1 AS curl
+FROM --platform=$BUILDPLATFORM ${REGISTRY_PREFIX}mcr.microsoft.com/dotnet/sdk:8.0 AS sdk8
 
 #
 #  Nuget config image
@@ -104,22 +105,37 @@ RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
 ###########################################################################################################
 ###########################################################################################################
 ###                                                                                                    ####
-###                                               E2E TEST HOST BUILD                                  ####
+###                                      E2E TEST HOST BUILD AND PUBLISH                               ####  
 ###                                                                                                    ####
 ###########################################################################################################
 ###########################################################################################################
 
-#
-# PUBLISH HOST
-#
-# don't use release build here - it's not a publishable target, and unversioned build can be cached way more often
-FROM build AS publish-host
+FROM sdk8 AS publish-host
+WORKDIR /code
+
+COPY --from=prepare-restore-files /code/restore_subset .
+ENV CI=true
+ARG TARGETARCH
 RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
-    dotnet publish\
-      --no-restore\
-      --no-build\
-      -o /pub/Host\
-      testapps/Host
+    dotnet restore -a $TARGETARCH
+
+COPY src src
+COPY tst tst
+COPY testapps testapps
+
+ARG VERSION
+RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
+    dotnet publish --no-restore \
+ -c Release\
+ -a $TARGETARCH \
+#  -p:DebugType=None\
+#  -p:DebugSymbols=false\
+ -p:VERSION=${VERSION}\
+ -p:ServerGarbageCollection=false\
+ -p:InvariantGlobalization=true\
+ -p:EmitCompilerGeneratedFiles=true\
+ -o /pub/Host\
+  testapps/Host
 
 ###########################################################################################################
 ###########################################################################################################
@@ -168,33 +184,6 @@ ARG TARGET_NUGET_APIKEY
 RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
     dotnet nuget push /nuget/*.nupkg -s ${TARGET_NUGET} -k ${TARGET_NUGET_APIKEY}
 
-###########################################################################################################
-###########################################################################################################
-###                                                                                                    ####
-###                                               PUBLISH RELEASE BUILDS                               ####
-###                                                                                                    ####
-###########################################################################################################
-###########################################################################################################
-
-#
-# PUBLISH TESTCONTAINER
-#
-FROM releasebuild AS publish-testcontainer
-ARG VERSION
-RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
-    dotnet publish\
-      --no-restore\
-      --no-build\
-      -c Release\
-      -p:DebugType=embedded\
-      -p:DebugSymbols=true\
-      -p:Deterministic=true\
-      -p:VERSION=${VERSION}\
-      -p:ServerGarbageCollection=false\
-      -p:InvariantGlobalization=true\
-      -p:EmitCompilerGeneratedFiles=true\
-      -o /pub/Host.Testserver\
-      testapps/Testserver
 
 ###########################################################################################################
 ###########################################################################################################
@@ -204,44 +193,20 @@ RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
 ###########################################################################################################
 ###########################################################################################################
 
-#
-#  Final image - shared base
-#
-FROM aspnet8 AS final-yarpgrpc-base
 
-# import curl from current repository image
-COPY --from=curl /bin/curl /bin/curl
+FROM aspnet8 AS final-host
 
-# Docs: <https://docs.docker.com/engine/reference/builder/#healthcheck>
-HEALTHCHECK --interval=5s --timeout=2s --retries=2 --start-period=2s CMD [ \
-    "curl", "--fail", "http://127.0.0.1:8080/" \
-]
-
-ENV COMPlus_EnableDiagnostics=0
-ENV TEMP_FILE_DIRECTORY=/temp_file_directory
-RUN mkdir -p $TEMP_FILE_DIRECTORY
-VOLUME $TEMP_FILE_DIRECTORY
-
-EXPOSE 8080/tcp
-
-#
-#  Final image - Testcontainer
-#
-FROM final-yarpgrpc-base AS final-testcontainer
-
-COPY --from=publish-testcontainer /pub/Host.Testserver/ /bin/yarpgrpc/
-
-VOLUME /data
-ENTRYPOINT ["/bin/yarpgrpc/Host.Testserver"]
-
-#
-#  Final image - E2E Test Host
-#
-FROM final-yarpgrpc-base AS final-host
+# todo - add healthcheck
+# # Docs: <https://docs.docker.com/engine/reference/builder/#healthcheck>
+# HEALTHCHECK --interval=5s --timeout=2s --retries=2 --start-period=2s CMD [ \
+#     "curl", "--fail", "http://127.0.0.1:8080/" \
+# ]
 
 COPY --from=publish-host /pub/Host/ /bin/yarpgrpc/
 
 VOLUME /data
 
-# Define the command to run your main application
-ENTRYPOINT ["dotnet", "/bin/yarpgrpc/Host.dll"]
+EXPOSE 8080/tcp
+
+WORKDIR /bin/yarpgrpc
+ENTRYPOINT ["dotnet", "Host.dll"]

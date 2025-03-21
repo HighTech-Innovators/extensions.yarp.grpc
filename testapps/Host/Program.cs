@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Extensions.Yarp.Grpc;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 
@@ -15,6 +16,13 @@ builder.WebHost.ConfigureKestrel(options =>
     });
 });
 
+builder.Configuration.AddJsonFile("/config/yarpgrpc.json", optional: true, reloadOnChange: true);
+
+//builder.AddAutoGrpcReverseProxy(new YarpGrpcOptions
+//{
+//    Hosts = ["http://localhost:10085"],
+//    AllowedServiceRegex = new Regex("")
+//});
 builder.AddAutoGrpcReverseProxy();
 
 var app = builder.Build();

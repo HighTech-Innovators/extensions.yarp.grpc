@@ -6,11 +6,11 @@ namespace Extensions.Yarp.Grpc;
 
 internal class ServiceMonitor : BackgroundService
 {
-    private readonly YarpConfig yarpConfig;
+    private readonly YarpConfigurer yarpConfig;
     private readonly InMemoryConfigProvider inMemoryConfigProvider;
     private readonly ILogger<ServiceMonitor> logger;
 
-    public ServiceMonitor(YarpConfig yarpConfig, InMemoryConfigProvider inMemoryConfigProvider, ILogger<ServiceMonitor> logger)
+    public ServiceMonitor(YarpConfigurer yarpConfig, InMemoryConfigProvider inMemoryConfigProvider, ILogger<ServiceMonitor> logger)
     {
         this.yarpConfig = yarpConfig;
         this.inMemoryConfigProvider = inMemoryConfigProvider;

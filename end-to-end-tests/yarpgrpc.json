@@ -8,9 +8,9 @@
     "AllowedHosts": "*",
     "YarpGrpc": {
         "Hosts": [
-            "http://localhost:10085",
-            "http://localhost:10081"
+            "http://grpc-greeter-one:8081",
+            "http://grpc-greeter-two:8082"
         ],
-        "AllowedServiceRegex": ".*ReaderService"
+        "AllowedServiceRegex": ""
     }
 }

@@ -3,6 +3,7 @@ using Grpc.Net.Client;
 using Grpc.Reflection;
 using Grpc.Reflection.V1Alpha;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -11,16 +12,16 @@ using System.Threading.Tasks;
 namespace Extensions.Yarp.Grpc;
 internal class CombinerService : ServerReflection.ServerReflectionBase
 {
-    private readonly AppConfig appConfig;
+    private readonly YarpGrpcOptions yarpGrpcOptions;
     private readonly ILogger<CombinerService> logger;
     private const int CHANNEL_TIMEOUT_MILLIS = 500;
     private readonly Dictionary<string,GrpcChannel> channels= [];
 
-    public CombinerService(AppConfig appConfig, ILogger<CombinerService> logger)
+    public CombinerService(IOptions<YarpGrpcOptions> yarpGrpcOptions, ILogger<CombinerService> logger)
     {
-        this.appConfig = appConfig;
+        this.yarpGrpcOptions = yarpGrpcOptions.Value;
         this.logger = logger;
-        var hosts= appConfig.Hosts;
+        var hosts= yarpGrpcOptions.Value.Hosts;
         foreach (var host in hosts)
         {
             channels[host] = GrpcChannel.ForAddress(host, new GrpcChannelOptions
@@ -37,13 +38,13 @@ internal class CombinerService : ServerReflection.ServerReflectionBase
         await foreach (var request in requestStream.ReadAllAsync())
         {
             var returnedResponses = new List<ServerReflectionResponse>();
-            foreach (var host in appConfig.Hosts)
+            foreach (var host in yarpGrpcOptions.Hosts)
             {
                 try
                 {
                     var responses = await GetReflectionResponses(host, request);
 
-                    RemoveNotAllowedServices(ref responses, appConfig.AllowedServiceRegex);
+                    RemoveNotAllowedServices(ref responses, new Regex(yarpGrpcOptions.AllowedServiceRegex));
 
                     returnedResponses.AddRange(responses);
                 }

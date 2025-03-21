@@ -25,11 +25,11 @@ services:
       LOGGING__LOGLEVEL__DEFAULT: "Information"
       LOGGING__LOGLEVEL__MICROSOFT__ASPNETCORE: "Warning"
       ALLOWEDHOSTS: "*"
-      HOSTS__0: "http://grpc-greeter-one:8081"
-      HOSTS__1: "http://grpc-greeter-two:8082"
-      ALLOWEDSERVICEREGEX: ""
+    volumes:
+      - ./yarpgrpc.json:/config/yarpgrpc.json
     depends_on:
       - grpc-greeter-one
+    
   grpc-greeter-one:
     image: testservergreeter:latest
     build:

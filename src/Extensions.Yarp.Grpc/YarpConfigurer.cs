@@ -6,18 +6,19 @@ using System.Text.RegularExpressions;
 using Microsoft.Extensions.Primitives;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 
 namespace Extensions.Yarp.Grpc;
 
-internal class YarpConfig
+internal class YarpConfigurer
 {
-    private readonly AppConfig appConfig;
-    private readonly ILogger<YarpConfig> logger;
+    private readonly YarpGrpcOptions yarpGrpcOptions;
+    private readonly ILogger<YarpConfigurer> logger;
     private readonly CombinerService combinerService;
 
-    public YarpConfig(AppConfig appConfig,ILogger<YarpConfig> logger, CombinerService combinerService)
+    public YarpConfigurer(IOptions<YarpGrpcOptions> yarpGrpcOptions,ILogger<YarpConfigurer> logger, CombinerService combinerService)
     {
-        this.appConfig = appConfig;
+        this.yarpGrpcOptions = yarpGrpcOptions.Value;
         this.logger = logger;
         this.combinerService = combinerService;
     }
@@ -49,7 +50,7 @@ internal class YarpConfig
     internal async Task<List<ServicesToHost>> GetServiceNamesFromReflection()
     {
         var result = new List<ServicesToHost>();
-        foreach (var host in appConfig.Hosts)
+        foreach (var host in yarpGrpcOptions.Hosts)
         {
             try
             {
@@ -62,7 +63,7 @@ internal class YarpConfig
                     var names = response.ListServicesResponse.Service.Select(serviceResp => $"{serviceResp.Name}");
                     var noReflection = names.Where(name => !name.Contains("reflection"));
 
-                    var filtered = noReflection.Where(name => appConfig.AllowedServiceRegex.IsMatch(name));
+                    var filtered = noReflection.Where(name => new Regex(yarpGrpcOptions.AllowedServiceRegex).IsMatch(name));
 
                     result.Add(new ServicesToHost(host, filtered.ToList()));
                 }
@@ -79,7 +80,7 @@ internal class YarpConfig
     {
         try
         {
-            foreach (var host in appConfig.Hosts)
+            foreach (var host in yarpGrpcOptions.Hosts)
             {
                 var request = new ServerReflectionRequest();
                 request.ListServices = "*";
@@ -98,7 +99,7 @@ internal class YarpConfig
     {
         var clusters = new List<ClusterConfig>();
 
-        foreach (var host in appConfig.Hosts)
+        foreach (var host in yarpGrpcOptions.Hosts)
         {
             clusters.Add(new ClusterConfig
             {
