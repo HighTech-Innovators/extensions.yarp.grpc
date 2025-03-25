@@ -20,4 +20,12 @@ This project extends YARP to combine multiple gRPC reflection endpoints into a s
 - add AddAutoGrpcReverseProxy() to your builder Program.cs
 - add MapAutoGrpcReverseProxy() to your app in Program.cs
 
-The configuration can be passed as an optional parameter to AddAutoGrpcReverseProxy or added in appsettings.json. Check end-to-end-tests\yarpgrpc.json for an example.
+The configuration can be passed as an optional parameter to AddAutoGrpcReverseProxy or added in appsettings.json. Check end-to-end-tests\yarpgrpc.json for an example. 
+
+## Testing
+
+End to end tests
+- cd ./end-to-end-tests
+- ./run.sh
+
+```yarpgrpc.json``` can be mounted at ```/config/yarpgrpc.json``` inside the container instead of using the environment variables in the compose.yml file.

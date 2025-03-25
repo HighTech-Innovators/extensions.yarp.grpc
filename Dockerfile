@@ -135,7 +135,7 @@ RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
  -p:InvariantGlobalization=true\
  -p:EmitCompilerGeneratedFiles=true\
  -o /pub/Host\
-  testapps/Host
+  src/Host
 
 ###########################################################################################################
 ###########################################################################################################
