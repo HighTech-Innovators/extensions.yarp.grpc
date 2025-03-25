@@ -1,0 +1,45 @@
+services:
+  tests:
+    build:
+      context: .
+      target: end-to-end-test
+      args:
+        REGISTRY_PREFIX: $REGISTRY_PREFIX
+    depends_on:
+      - yarpgrpc-proxy
+    deploy:
+      replicas: 0
+  yarpgrpc-proxy:
+    build:
+      context: ..
+      target: final-host
+      args:
+        DOCKERHOST: $DOCKER_HOST
+        VERSION: $VERSION
+        REGISTRY_PREFIX: $REGISTRY_PREFIX
+        PRIVATE_NUGET: $PRIVATE_NUGET
+        NUGET_PROXY: $NUGET_PROXY
+    # ports:
+    #   - "8080:8080"
+    environment:
+      LOGGING__LOGLEVEL__DEFAULT: "Information"
+      LOGGING__LOGLEVEL__MICROSOFT__ASPNETCORE: "Warning"
+      ALLOWEDHOSTS: "*"
+      YARPGRPC__HOSTS__0: "http://grpc-greeter-one:8081"
+      YARPGRPC__HOSTS__1: "http://grpc-greeter-two:8082"
+      YARPGRPC__ALLOWEDSERVICEREGEX: ""
+    depends_on:
+      - grpc-greeter-one
+    
+  grpc-greeter-one:
+    image: testservergreeter:latest
+    build:
+      context: ../testapps/TestServerGreeter/
+    # ports:
+    #   - "8081:8081"
+  grpc-greeter-two:
+    image: testservergreetertwo:latest
+    build:
+      context: ../testapps/TestServerGreeterTwo/
+    # ports:
+    #   - "8082:8082"

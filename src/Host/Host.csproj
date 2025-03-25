@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+  	<PackageReference Include="Grpc.AspNetCore" />
+  	<PackageReference Include="Grpc.Reflection" />
+  	<PackageReference Include="Yarp.ReverseProxy" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Extensions.Yarp.Grpc\Extensions.Yarp.Grpc.csproj" />
+  </ItemGroup>
+
+</Project>
