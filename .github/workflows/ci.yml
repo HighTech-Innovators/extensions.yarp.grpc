@@ -1,0 +1,285 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master, develop ]
+    tags: [ 'v*' ] # Trigger on version tags like v1.0.0
+  pull_request:
+    branches: [ main, master, develop ]
+
+env:
+  # Define variables equivalent to GitLab's top-level variables
+  # Use GitHub Variables (repository or organization level) for non-sensitive values
+  REGISTRY_PREFIX: ${{ vars.REGISTRY_PREFIX || '' }}
+  PRIVATE_NUGET: ${{ vars.PRIVATE_NUGET || '' }}
+  NUGET_PROXY: ${{ vars.NUGET_PROXY || '' }}
+  TARGET_NUGET: ${{ vars.TARGET_NUGET || '' }}
+  SONAR_USER_HOME: ${{ github.workspace }}/.sonar
+  SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY || 'your_project_key' }} # Set this variable in GitHub
+
+jobs:
+  build_and_test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.set_version.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Required for SonarQube analysis based on branches/tags
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Set Version
+        id: set_version
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            # Use the tag name directly for version
+            VERSION=${GITHUB_REF#refs/tags/}
+          else
+            # Use a development version format for branches/PRs
+            VERSION="0.0.0-cibuild-${GITHUB_SHA::8}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Calculated version: $VERSION"
+
+      - name: Docker Build - Restore Target
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          target: restore
+          build-args: |
+            RunExternalProvidersTests=true
+            VERSION=${{ steps.set_version.outputs.version }}
+            REGISTRY_PREFIX=${{ env.REGISTRY_PREFIX }}
+            PRIVATE_NUGET=${{ env.PRIVATE_NUGET }}
+            NUGET_PROXY=${{ env.NUGET_PROXY }}
+            TARGET_NUGET=${{ env.TARGET_NUGET }}
+            TARGET_NUGET_APIKEY=${{ secrets.TARGET_NUGET_APIKEY }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Docker Build - Build Target
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          target: build
+          build-args: |
+            RunExternalProvidersTests=true
+            VERSION=${{ steps.set_version.outputs.version }}
+            REGISTRY_PREFIX=${{ env.REGISTRY_PREFIX }}
+            PRIVATE_NUGET=${{ env.PRIVATE_NUGET }}
+            NUGET_PROXY=${{ env.NUGET_PROXY }}
+            TARGET_NUGET=${{ env.TARGET_NUGET }}
+            TARGET_NUGET_APIKEY=${{ secrets.TARGET_NUGET_APIKEY }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Docker Build - Test Target
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          target: test
+          build-args: |
+            RunExternalProvidersTests=true
+            VERSION=${{ steps.set_version.outputs.version }}
+            REGISTRY_PREFIX=${{ env.REGISTRY_PREFIX }}
+            PRIVATE_NUGET=${{ env.PRIVATE_NUGET }}
+            NUGET_PROXY=${{ env.NUGET_PROXY }}
+            TARGET_NUGET=${{ env.TARGET_NUGET }}
+            TARGET_NUGET_APIKEY=${{ secrets.TARGET_NUGET_APIKEY }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max # Cache test results if beneficial
+
+  e2e_test:
+    name: E2E Test
+    runs-on: ubuntu-latest
+    needs: build_and_test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Setup Docker if run.sh needs it
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Run E2E Tests
+        working-directory: ./end-to-end-tests
+        run: |
+          chmod +x ./run.sh
+          VERSION=${{ needs.build_and_test.outputs.version }} ./run.sh
+        # Ensure run.sh has access to necessary Docker capabilities or built artifacts if required.
+
+  publish_nuget:
+    name: Publish NuGet Package
+    runs-on: ubuntu-latest
+    needs: [build_and_test, e2e_test]
+    if: startsWith(github.ref, 'refs/tags/') # Only run for tags
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Docker Build - Package Target
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          target: package
+          build-args: |
+            RunExternalProvidersTests=true
+            VERSION=${{ needs.build_and_test.outputs.version }}
+            REGISTRY_PREFIX=${{ env.REGISTRY_PREFIX }}
+            PRIVATE_NUGET=${{ env.PRIVATE_NUGET }}
+            NUGET_PROXY=${{ env.NUGET_PROXY }}
+            TARGET_NUGET=${{ env.TARGET_NUGET }}
+            TARGET_NUGET_APIKEY=${{ secrets.TARGET_NUGET_APIKEY }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Docker Build - NuGet Push Target
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false # The 'nugetpush' target likely performs the push internally
+          target: nugetpush
+          build-args: |
+            RunExternalProvidersTests=true
+            VERSION=${{ needs.build_and_test.outputs.version }}
+            REGISTRY_PREFIX=${{ env.REGISTRY_PREFIX }}
+            PRIVATE_NUGET=${{ env.PRIVATE_NUGET }}
+            NUGET_PROXY=${{ env.NUGET_PROXY }}
+            TARGET_NUGET=${{ env.TARGET_NUGET }}
+            TARGET_NUGET_APIKEY=${{ secrets.TARGET_NUGET_APIKEY }}
+          cache-from: type=gha # Use cache for dependencies, but don't cache the push itself
+
+  publish_docker:
+    name: Publish Docker Image
+    runs-on: ubuntu-latest
+    needs: [build_and_test, e2e_test]
+    if: startsWith(github.ref, 'refs/tags/') # Only run for tags
+    permissions:
+      contents: read
+      packages: write # Permission to push to GitHub Container Registry (GHCR)
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }} # Assumes using GHCR
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          target: final-host
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            RunExternalProvidersTests=true
+            VERSION=${{ needs.build_and_test.outputs.version }}
+            REGISTRY_PREFIX=${{ env.REGISTRY_PREFIX }}
+            PRIVATE_NUGET=${{ env.PRIVATE_NUGET }}
+            NUGET_PROXY=${{ env.NUGET_PROXY }}
+            TARGET_NUGET=${{ env.TARGET_NUGET }}
+            TARGET_NUGET_APIKEY=${{ secrets.TARGET_NUGET_APIKEY }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  sonarqube:
+    name: SonarQube Analysis
+    runs-on: ubuntu-latest
+    needs: build_and_test
+    # Run on pushes to main branches or on pull requests
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || github.ref == 'refs/heads/develop'))
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Sonar needs full history
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Docker Build - SonarQube Check Target
+        env:
+          # Pass secrets and context variables as environment variables to the build step
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          # Map GitLab CI variables to GitHub Actions context
+          CI_COMMIT_REF_NAME: ${{ github.ref_name }}
+          CI_MERGE_REQUEST_IID: ${{ github.event.pull_request.number }}
+          CI_MERGE_REQUEST_TARGET_BRANCH_NAME: ${{ github.base_ref }}
+          CI_PROJECT_ID: ${{ github.repository_id }} # Or use github.repository if preferred
+        run: |
+          docker build . -f sonar.Dockerfile --target sonarqube-check \
+            --build-arg VERSION=${{ needs.build_and_test.outputs.version }} \
+            --build-arg SONAR_PROJECT_KEY="${{ env.SONAR_PROJECT_KEY }}" \
+            --build-arg RunExternalProvidersTests=true \
+            --build-arg SONAR_HOST_URL="$SONAR_HOST_URL" \
+            --build-arg SONAR_TOKEN="$SONAR_TOKEN" \
+            --build-arg SONAR_USER_HOME="${{ env.SONAR_USER_HOME }}" \
+            --build-arg CI_COMMIT_REF_NAME="$CI_COMMIT_REF_NAME" \
+            --build-arg CI_MERGE_REQUEST_IID="$CI_MERGE_REQUEST_IID" \
+            --build-arg CI_MERGE_REQUEST_TARGET_BRANCH_NAME="$CI_MERGE_REQUEST_TARGET_BRANCH_NAME" \
+            --build-arg CI_PROJECT_ID="$CI_PROJECT_ID" \
+            --pull # Replicate --pull from GitLab CI
+
+      - name: Download Sonar Vulnerability Report
+        env:
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          # Map GitLab CI variables
+          CI_COMMIT_BRANCH: ${{ github.ref_name }} # Use ref_name for branch
+          CI_MERGE_REQUEST_IID: ${{ github.event.pull_request.number }}
+        run: |
+          mkdir -p ./sonar-report-output
+          docker buildx build . -f sonar.Dockerfile --target sonar-report-downloader \
+            --output type=local,dest=./sonar-report-output \
+            --build-arg SONAR_PROJECT_KEY="${{ env.SONAR_PROJECT_KEY }}" \
+            --build-arg SONAR_HOST_URL="$SONAR_HOST_URL" \
+            --build-arg SONAR_TOKEN="$SONAR_TOKEN" \
+            --build-arg CI_COMMIT_BRANCH="$CI_COMMIT_BRANCH" \
+            --build-arg CI_MERGE_REQUEST_IID="$CI_MERGE_REQUEST_IID" \
+            --pull # Replicate --pull from GitLab CI
+
+      - name: Upload SAST Report Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sast-report
+          # Adjust the path based on where the 'sonar-report-downloader' target saves the file
+          path: ./sonar-report-output/gl-sast-sonar-report.json
+          retention-days: 7 # Keep artifact for 7 days
+
+      # Optional: Upload report to GitHub Security tab if it's in SARIF format
+      # - name: Upload SARIF file
+      #   uses: github/codeql-action/upload-sarif@v3
+      #   with:
+      #     sarif_file: ./sonar-report-output/gl-sast-sonar-report.json
