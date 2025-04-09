@@ -3,7 +3,7 @@ name: CI/CD Pipeline
 on:
   push:
     branches: [ main, master, develop, feature/* ]
-    tags: [ 'v*' ] # Trigger on version tags like v1.0.0
+    tags: [ '[0-9]+.[0-9]+.[0-9]+*' ] # Trigger on SemVer tags like 1.0.0, 1.2.3-rc1, etc.
   pull_request:
     branches: [ main, master, develop ]
 
