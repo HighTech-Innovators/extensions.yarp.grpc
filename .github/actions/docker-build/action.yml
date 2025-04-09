@@ -1,0 +1,60 @@
+name: 'Docker Build Wrapper'
+description: 'Wraps docker/build-push-action with common settings'
+
+inputs:
+  target:
+    description: 'Build target'
+    required: true
+  version:
+    description: 'Build version - only required for publish steps'
+    required: false
+    default: '0.0.0-cicd'
+  push:
+    description: 'Push the image?'
+    required: false
+    default: 'false'
+  tags:
+    description: 'Docker tags'
+    required: false
+    default: ''
+  labels:
+    description: 'Docker labels'
+    required: false
+    default: ''
+  target-nuget:
+    description: 'Target NuGet source'
+    required: false
+    default: ''
+  run-external-tests:
+    description: 'Run external provider tests build arg'
+    required: false
+    default: 'true'
+  cache-mode:
+    description: 'Cache mode (max or min)'
+    required: false
+    default: 'max'
+  secrets:
+    description: 'Build secrets'
+    required: false
+    default: ''
+
+runs:
+  using: "composite"
+  steps:
+    - name: Docker Build Action
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile
+        push: ${{ inputs.push }}
+        target: ${{ inputs.target }}
+        tags: ${{ inputs.tags }}
+        labels: ${{ inputs.labels }}
+        secrets: ${{ inputs.secrets }}
+        build-args: |
+          TARGET_NUGET=${{ inputs.target-nuget }}
+          RunExternalProvidersTests=${{ inputs.run-external-tests }}
+          VERSION=${{ inputs.version }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=${{ inputs.cache-mode }}
+

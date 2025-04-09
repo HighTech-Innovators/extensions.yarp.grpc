@@ -1,0 +1,238 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master, develop, feature/* ]
+    tags: [ '[0-9]+.[0-9]+.[0-9]+*' ] # Trigger on SemVer tags like 1.0.0, 1.2.3-rc1, etc.
+  pull_request:
+    branches: [ main, master, develop ]
+
+env:
+  # Define variables equivalent to GitLab's top-level variables
+  # Use GitHub Variables (repository or organization level) for non-sensitive values
+  TARGET_NUGET: ${{ vars.TARGET_NUGET || '' }}
+  SONAR_USER_HOME: ${{ github.workspace }}/.sonar
+  SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY || 'your_project_key' }} # Set this variable in GitHub
+
+jobs:
+  build_and_test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.set_version.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Required for SonarQube analysis based on branches/tags
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Docker Build - Restore Target
+        uses: ./.github/actions/docker-build # Use the composite action
+        with:
+          target: restore
+
+      - name: Docker Build - Build Target
+        uses: ./.github/actions/docker-build # Use the composite action
+        with:
+          target: build
+
+      - name: Docker Build - Test Target
+        uses: ./.github/actions/docker-build # Use the composite action
+        with:
+          target: test
+
+      - name: Set Version
+        id: set_version
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            # Use the tag name directly for version
+            VERSION=${GITHUB_REF#refs/tags/}
+          else
+            # Use a development version format for branches/PRs
+            VERSION="0.0.0-cibuild-${GITHUB_SHA::8}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Calculated version: $VERSION"
+
+  e2e_test:
+    name: E2E Test
+    runs-on: ubuntu-latest
+    needs: build_and_test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Setup Docker if run.sh needs it
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Run E2E Tests
+        working-directory: ./end-to-end-tests
+        run: |
+          bash ./run.sh
+
+  publish_nuget:
+    name: Publish NuGet Package
+    runs-on: ubuntu-latest
+    needs: [build_and_test, e2e_test]
+    if: startsWith(github.ref, 'refs/tags/') # Only run for tags
+    permissions:
+      contents: read
+      packages: write # Required to push to GitHub Packages
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Need full history to check branches for tags
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Docker Build - Package Target
+        uses: ./.github/actions/docker-build # Use the composite action
+        with:
+          target: package
+          version: ${{ needs.build_and_test.outputs.version }}
+
+      - name: Determine NuGet Target
+        id: determine_nuget_target
+        run: |
+          # Check if the tag exists on the main branch (adjust 'main' if your default branch is different)
+          # Ensure remote branches are fetched if checkout didn't get them all
+          git fetch origin main:main --force
+          if git branch --contains ${{ github.ref_name }} | grep -q 'main$'; then
+            echo "Tag is on main branch. Targeting public NuGet."
+            # Use TARGET_NUGET if set, otherwise default to nuget.org
+            NUGET_URL_VALUE="${{ env.TARGET_NUGET }}"
+            if [ -z "$NUGET_URL_VALUE" ]; then
+              NUGET_URL_VALUE="https://api.nuget.org/v3/index.json"
+            fi
+            echo "NUGET_URL=$NUGET_URL_VALUE" >> $GITHUB_ENV
+            echo "NUGET_API_KEY=${{ secrets.TARGET_NUGET_APIKEY }}" >> $GITHUB_ENV
+          else
+            echo "Tag is NOT on main branch. Targeting GitHub Packages."
+            echo "NUGET_URL=https://nuget.pkg.github.com/${{ github.repository_owner }}" >> $GITHUB_ENV
+            echo "NUGET_API_KEY=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
+          fi
+
+      - name: Docker Build - NuGet Push Target
+        uses: ./.github/actions/docker-build # Use the composite action
+        env:
+          NUGET_API_KEY: ${{ env.NUGET_API_KEY }}
+        with:
+          target: nugetpush
+          version: ${{ needs.build_and_test.outputs.version }}
+          target-nuget: ${{ env.NUGET_URL }}
+          secrets: |
+            nuget_api_key=${{ env.NUGET_API_KEY }}
+
+  publish_docker:
+    name: Publish Docker Image
+    runs-on: ubuntu-latest
+    needs: [build_and_test, e2e_test]
+    if: startsWith(github.ref, 'refs/tags/') # Only run for tags
+    permissions:
+      contents: read
+      packages: write # Permission to push to GitHub Container Registry (GHCR)
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }} # Assumes using GHCR
+
+      - name: Build and push Docker image
+        uses: ./.github/actions/docker-build # Use the composite action
+        with:
+          target: final-host
+          version: ${{ needs.build_and_test.outputs.version }}
+          push: true # Override default
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          target-nuget: ${{ env.TARGET_NUGET }}
+
+  sonarqube:
+    name: SonarQube Analysis
+    runs-on: ubuntu-latest
+    needs: build_and_test
+    # Run on pushes to main branches or on pull requests
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || github.ref == 'refs/heads/develop'))
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Sonar needs full history
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Docker Build - SonarQube Check Target
+        env:
+          # Pass secrets and context variables as environment variables to the build step
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          # Map GitLab CI variables to GitHub Actions context
+          CI_COMMIT_REF_NAME: ${{ github.ref_name }}
+          CI_MERGE_REQUEST_IID: ${{ github.event.pull_request.number }}
+          CI_MERGE_REQUEST_TARGET_BRANCH_NAME: ${{ github.base_ref }}
+          CI_PROJECT_ID: ${{ github.repository_id }} # Or use github.repository if preferred
+        run: |
+          docker build . -f sonar.Dockerfile --target sonarqube-check \
+            --build-arg SONAR_PROJECT_KEY="${{ env.SONAR_PROJECT_KEY }}" \
+            --build-arg RunExternalProvidersTests=true \
+            --build-arg SONAR_HOST_URL="$SONAR_HOST_URL" \
+            --build-arg SONAR_TOKEN="$SONAR_TOKEN" \
+            --build-arg SONAR_USER_HOME="${{ env.SONAR_USER_HOME }}" \
+            --build-arg CI_COMMIT_REF_NAME="$CI_COMMIT_REF_NAME" \
+            --build-arg CI_MERGE_REQUEST_IID="$CI_MERGE_REQUEST_IID" \
+            --build-arg CI_MERGE_REQUEST_TARGET_BRANCH_NAME="$CI_MERGE_REQUEST_TARGET_BRANCH_NAME" \
+            --build-arg CI_PROJECT_ID="$CI_PROJECT_ID" \
+            --pull # Replicate --pull from GitLab CI
+
+      - name: Download Sonar Vulnerability Report
+        env:
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          # Map GitLab CI variables
+          CI_COMMIT_BRANCH: ${{ github.ref_name }} # Use ref_name for branch
+          CI_MERGE_REQUEST_IID: ${{ github.event.pull_request.number }}
+        run: |
+          mkdir -p ./sonar-report-output
+          docker buildx build . -f sonar.Dockerfile --target sonar-report-downloader \
+            --output type=local,dest=./sonar-report-output \
+            --build-arg SONAR_PROJECT_KEY="${{ env.SONAR_PROJECT_KEY }}" \
+            --build-arg SONAR_HOST_URL="$SONAR_HOST_URL" \
+            --build-arg SONAR_TOKEN="$SONAR_TOKEN" \
+            --build-arg CI_COMMIT_BRANCH="$CI_COMMIT_BRANCH" \
+            --build-arg CI_MERGE_REQUEST_IID="$CI_MERGE_REQUEST_IID" \
+            --pull # Replicate --pull from GitLab CI
+
+      - name: Upload SAST Report Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sast-report
+          # Adjust the path based on where the 'sonar-report-downloader' target saves the file
+          path: ./sonar-report-output/gl-sast-sonar-report.json
+          retention-days: 7 # Keep artifact for 7 days
+
+      # Optional: Upload report to GitHub Security tab if it's in SARIF format
+      # - name: Upload SARIF file
+      #   uses: github/codeql-action/upload-sarif@v3
+      #   with:
+      #     sarif_file: ./sonar-report-output/gl-sast-sonar-report.json
