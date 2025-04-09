@@ -26,6 +26,26 @@ jobs:
         with:
           fetch-depth: 0 # Required for SonarQube analysis based on branches/tags
 
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          # Key based on OS and the packages file hash
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/Directory.Packages.props') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      # Copy cached packages into the build context directory
+      - name: Prepare NuGet cache for Docker context
+        run: |
+          mkdir -p .github/nuget/packages
+          if [ -d ~/.nuget/packages ]; then
+            cp -R ~/.nuget/packages/* .github/nuget/packages/
+          else
+            echo "NuGet cache directory (~/.nuget/packages) not found or empty."
+          fi
+        shell: bash
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 

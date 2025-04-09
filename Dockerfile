@@ -73,10 +73,15 @@ RUN dotnet subset restore *.sln --root-directory . --output restore_subset/
 FROM sdk8 AS restore
 WORKDIR /code
 
+# Copy the host-cached packages (if any) from the build context first
+# Adjust the source path if you changed it in the workflow yaml
+COPY .github/nuget/packages /root/.nuget/packages
+
+# Copy the subset of project/solution files needed for restore
 COPY --from=prepare-restore-files /code/restore_subset .
 ENV CI=true
-RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
-    dotnet restore
+# Run restore - it will use packages from /root/.nuget/packages if they exist
+RUN dotnet restore
 
 #
 # BUILD
@@ -86,8 +91,7 @@ COPY src src
 COPY tst tst
 COPY testapps testapps
 RUN echo dotnet build -p:VERSION=0.0.0-local --no-restore -c Release
-RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
-    dotnet build -p:VERSION=0.0.0-local --no-restore -c Release
+RUN dotnet build -p:VERSION=0.0.0-local --no-restore -c Release
 
 #
 # TEST
@@ -98,8 +102,7 @@ ENV DOCKER_HOST=${DOCKER_HOST}
 
 ARG RunExternalProvidersTests=true
 
-RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
-    dotnet test --no-build -c Release \
+RUN dotnet test --no-build -c Release \
     $(if [ "$RunExternalProvidersTests" = "false" ]; then echo '--filter "FullyQualifiedName!~WithCustomTestContainersImplementation"'; fi)
 
 ###########################################################################################################
@@ -113,23 +116,25 @@ RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
 FROM sdk8 AS publish-host
 WORKDIR /code
 
+# Copy the host-cached packages (if any) from the build context first
+# Adjust the source path if you changed it in the workflow yaml
+COPY .github/nuget/packages /root/.nuget/packages
+
+# Copy the subset of project/solution files needed for restore
 COPY --from=prepare-restore-files /code/restore_subset .
 ENV CI=true
 ARG TARGETARCH
-RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
-    dotnet restore -a $TARGETARCH
+# Run restore - it will use packages from /root/.nuget/packages if they exist
+RUN dotnet restore -a $TARGETARCH
 
 COPY src src
 COPY tst tst
 COPY testapps testapps
 
 ARG VERSION
-RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
-    dotnet publish --no-restore \
+RUN dotnet publish --no-restore \
  -c Release\
  -a $TARGETARCH \
-#  -p:DebugType=None\
-#  -p:DebugSymbols=false\
  -p:VERSION=${VERSION}\
  -p:ServerGarbageCollection=false\
  -p:InvariantGlobalization=true\
@@ -151,8 +156,7 @@ RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
 FROM build AS releasebuild
 ARG VERSION
 RUN echo dotnet build -p:VERSION=${VERSION} --no-restore -c Release
-RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
-    dotnet build\
+RUN dotnet build\
       --no-restore\
       -c Release\
       -p:DebugType=embedded\
@@ -171,8 +175,7 @@ ARG VERSION
 COPY icon.png .
 COPY README.md .
 RUN echo dotnet pack -p:VERSION=${VERSION} --no-build --no-restore -c Release -o /nuget/
-RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
-    dotnet pack -p:VERSION=${VERSION} --no-build --no-restore -c Release -o /nuget/
+RUN dotnet pack -p:VERSION=${VERSION} --no-build --no-restore -c Release -o /nuget/
 RUN ls -l /nuget
 
 #
@@ -181,8 +184,7 @@ RUN ls -l /nuget
 FROM package AS nugetpush
 ARG TARGET_NUGET
 ARG TARGET_NUGET_APIKEY
-RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
-    dotnet nuget push /nuget/*.nupkg -s ${TARGET_NUGET} -k ${TARGET_NUGET_APIKEY}
+RUN dotnet nuget push /nuget/*.nupkg -s ${TARGET_NUGET} -k ${TARGET_NUGET_APIKEY}
 
 
 ###########################################################################################################
