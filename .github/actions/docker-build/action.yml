@@ -6,8 +6,9 @@ inputs:
     description: 'Build target'
     required: true
   version:
-    description: 'Build version'
-    required: true
+    description: 'Build version - only required for publish steps'
+    required: false
+    default: '0.0.0-cicd'
   api-key:
     description: 'NuGet API Key'
     required: false
@@ -15,25 +16,13 @@ inputs:
   push:
     description: 'Push the image?'
     required: false
-    default: 'false' # Default to false as most steps don't push
+    default: 'false'
   tags:
     description: 'Docker tags'
     required: false
     default: ''
   labels:
     description: 'Docker labels'
-    required: false
-    default: ''
-  registry-prefix:
-    description: 'Docker registry prefix'
-    required: false
-    default: ''
-  private-nuget:
-    description: 'Private NuGet source'
-    required: false
-    default: ''
-  nuget-proxy:
-    description: 'NuGet proxy source'
     required: false
     default: ''
   target-nuget:
@@ -62,9 +51,6 @@ runs:
         tags: ${{ inputs.tags }}
         labels: ${{ inputs.labels }}
         build-args: |
-          REGISTRY_PREFIX=${{ inputs.registry-prefix }}
-          PRIVATE_NUGET=${{ inputs.private-nuget }}
-          NUGET_PROXY=${{ inputs.nuget-proxy }}
           TARGET_NUGET=${{ inputs.target-nuget }}
           RunExternalProvidersTests=${{ inputs.run-external-tests }}
           VERSION=${{ inputs.version }}

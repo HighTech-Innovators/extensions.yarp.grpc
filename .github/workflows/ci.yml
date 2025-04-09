@@ -10,9 +10,6 @@ on:
 env:
   # Define variables equivalent to GitLab's top-level variables
   # Use GitHub Variables (repository or organization level) for non-sensitive values
-  REGISTRY_PREFIX: ${{ vars.REGISTRY_PREFIX || '' }}
-  PRIVATE_NUGET: ${{ vars.PRIVATE_NUGET || '' }}
-  NUGET_PROXY: ${{ vars.NUGET_PROXY || '' }}
   TARGET_NUGET: ${{ vars.TARGET_NUGET || '' }}
   SONAR_USER_HOME: ${{ github.workspace }}/.sonar
   SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY || 'your_project_key' }} # Set this variable in GitHub
@@ -32,6 +29,21 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Docker Build - Restore Target
+        uses: ./.github/actions/docker-build # Use the composite action
+        with:
+          target: restore
+
+      - name: Docker Build - Build Target
+        uses: ./.github/actions/docker-build # Use the composite action
+        with:
+          target: build
+
+      - name: Docker Build - Test Target
+        uses: ./.github/actions/docker-build # Use the composite action
+        with:
+          target: test
+
       - name: Set Version
         id: set_version
         run: |
@@ -44,40 +56,6 @@ jobs:
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Calculated version: $VERSION"
-
-      - name: Docker Build - Restore Target
-        uses: ./.github/actions/docker-build # Use the composite action
-        with:
-          target: restore
-          version: ${{ steps.set_version.outputs.version }}
-          api-key: ${{ secrets.TARGET_NUGET_APIKEY }}
-          registry-prefix: ${{ env.REGISTRY_PREFIX }}
-          private-nuget: ${{ env.PRIVATE_NUGET }}
-          nuget-proxy: ${{ env.NUGET_PROXY }}
-          target-nuget: ${{ env.TARGET_NUGET }}
-
-      - name: Docker Build - Build Target
-        uses: ./.github/actions/docker-build # Use the composite action
-        with:
-          target: build
-          version: ${{ steps.set_version.outputs.version }}
-          api-key: ${{ secrets.TARGET_NUGET_APIKEY }}
-          registry-prefix: ${{ env.REGISTRY_PREFIX }}
-          private-nuget: ${{ env.PRIVATE_NUGET }}
-          nuget-proxy: ${{ env.NUGET_PROXY }}
-          target-nuget: ${{ env.TARGET_NUGET }}
-
-      - name: Docker Build - Test Target
-        uses: ./.github/actions/docker-build # Use the composite action
-        with:
-          target: test
-          version: ${{ steps.set_version.outputs.version }}
-          api-key: ${{ secrets.TARGET_NUGET_APIKEY }}
-          registry-prefix: ${{ env.REGISTRY_PREFIX }}
-          private-nuget: ${{ env.PRIVATE_NUGET }}
-          nuget-proxy: ${{ env.NUGET_PROXY }}
-          target-nuget: ${{ env.TARGET_NUGET }}
-          # cache-mode: max # Default is max, explicitly set if needed
 
   e2e_test:
     name: E2E Test
@@ -94,9 +72,7 @@ jobs:
       - name: Run E2E Tests
         working-directory: ./end-to-end-tests
         run: |
-          chmod +x ./run.sh
-          VERSION=${{ needs.build_and_test.outputs.version }} ./run.sh
-        # Ensure run.sh has access to necessary Docker capabilities or built artifacts if required.
+          bash ./run.sh
 
   publish_nuget:
     name: Publish NuGet Package
@@ -115,11 +91,6 @@ jobs:
         with:
           target: package
           version: ${{ needs.build_and_test.outputs.version }}
-          api-key: ${{ secrets.TARGET_NUGET_APIKEY }}
-          registry-prefix: ${{ env.REGISTRY_PREFIX }}
-          private-nuget: ${{ env.PRIVATE_NUGET }}
-          nuget-proxy: ${{ env.NUGET_PROXY }}
-          target-nuget: ${{ env.TARGET_NUGET }}
 
       - name: Docker Build - NuGet Push Target
         uses: ./.github/actions/docker-build # Use the composite action
@@ -127,9 +98,6 @@ jobs:
           target: nugetpush
           version: ${{ needs.build_and_test.outputs.version }}
           api-key: ${{ secrets.TARGET_NUGET_APIKEY }}
-          registry-prefix: ${{ env.REGISTRY_PREFIX }}
-          private-nuget: ${{ env.PRIVATE_NUGET }}
-          nuget-proxy: ${{ env.NUGET_PROXY }}
           target-nuget: ${{ env.TARGET_NUGET }}
           # push: false # Default is false
           # cache-mode: min # Don't cache the push itself if desired
@@ -171,9 +139,6 @@ jobs:
           push: true # Override default
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          registry-prefix: ${{ env.REGISTRY_PREFIX }}
-          private-nuget: ${{ env.PRIVATE_NUGET }}
-          nuget-proxy: ${{ env.NUGET_PROXY }}
           target-nuget: ${{ env.TARGET_NUGET }}
 
   sonarqube:
@@ -203,7 +168,6 @@ jobs:
           CI_PROJECT_ID: ${{ github.repository_id }} # Or use github.repository if preferred
         run: |
           docker build . -f sonar.Dockerfile --target sonarqube-check \
-            --build-arg VERSION=${{ needs.build_and_test.outputs.version }} \
             --build-arg SONAR_PROJECT_KEY="${{ env.SONAR_PROJECT_KEY }}" \
             --build-arg RunExternalProvidersTests=true \
             --build-arg SONAR_HOST_URL="$SONAR_HOST_URL" \
