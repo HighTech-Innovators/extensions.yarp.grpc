@@ -1,0 +1,74 @@
+name: 'Docker Build Wrapper'
+description: 'Wraps docker/build-push-action with common settings'
+
+inputs:
+  target:
+    description: 'Build target'
+    required: true
+  version:
+    description: 'Build version'
+    required: true
+  api-key:
+    description: 'NuGet API Key'
+    required: false
+    default: ''
+  push:
+    description: 'Push the image?'
+    required: false
+    default: 'false' # Default to false as most steps don't push
+  tags:
+    description: 'Docker tags'
+    required: false
+    default: ''
+  labels:
+    description: 'Docker labels'
+    required: false
+    default: ''
+  registry-prefix:
+    description: 'Docker registry prefix'
+    required: false
+    default: ''
+  private-nuget:
+    description: 'Private NuGet source'
+    required: false
+    default: ''
+  nuget-proxy:
+    description: 'NuGet proxy source'
+    required: false
+    default: ''
+  target-nuget:
+    description: 'Target NuGet source'
+    required: false
+    default: ''
+  run-external-tests:
+    description: 'Run external provider tests build arg'
+    required: false
+    default: 'true'
+  cache-mode:
+    description: 'Cache mode (max or min)'
+    required: false
+    default: 'max'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Docker Build Action
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile
+        push: ${{ inputs.push }}
+        target: ${{ inputs.target }}
+        tags: ${{ inputs.tags }}
+        labels: ${{ inputs.labels }}
+        build-args: |
+          REGISTRY_PREFIX=${{ inputs.registry-prefix }}
+          PRIVATE_NUGET=${{ inputs.private-nuget }}
+          NUGET_PROXY=${{ inputs.nuget-proxy }}
+          TARGET_NUGET=${{ inputs.target-nuget }}
+          RunExternalProvidersTests=${{ inputs.run-external-tests }}
+          VERSION=${{ inputs.version }}
+          TARGET_NUGET_APIKEY=${{ inputs.api-key }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=${{ inputs.cache-mode }}
+

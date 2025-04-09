@@ -46,58 +46,38 @@ jobs:
           echo "Calculated version: $VERSION"
 
       - name: Docker Build - Restore Target
-        uses: docker/build-push-action@v5
+        uses: ./.github/actions/docker-build # Use the composite action
         with:
-          context: .
-          file: ./Dockerfile
-          push: false
           target: restore
-          build-args: |
-            RunExternalProvidersTests=true
-            VERSION=${{ steps.set_version.outputs.version }}
-            REGISTRY_PREFIX=${{ env.REGISTRY_PREFIX }}
-            PRIVATE_NUGET=${{ env.PRIVATE_NUGET }}
-            NUGET_PROXY=${{ env.NUGET_PROXY }}
-            TARGET_NUGET=${{ env.TARGET_NUGET }}
-            TARGET_NUGET_APIKEY=${{ secrets.TARGET_NUGET_APIKEY }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          version: ${{ steps.set_version.outputs.version }}
+          api-key: ${{ secrets.TARGET_NUGET_APIKEY }}
+          registry-prefix: ${{ env.REGISTRY_PREFIX }}
+          private-nuget: ${{ env.PRIVATE_NUGET }}
+          nuget-proxy: ${{ env.NUGET_PROXY }}
+          target-nuget: ${{ env.TARGET_NUGET }}
 
       - name: Docker Build - Build Target
-        uses: docker/build-push-action@v5
+        uses: ./.github/actions/docker-build # Use the composite action
         with:
-          context: .
-          file: ./Dockerfile
-          push: false
           target: build
-          build-args: |
-            RunExternalProvidersTests=true
-            VERSION=${{ steps.set_version.outputs.version }}
-            REGISTRY_PREFIX=${{ env.REGISTRY_PREFIX }}
-            PRIVATE_NUGET=${{ env.PRIVATE_NUGET }}
-            NUGET_PROXY=${{ env.NUGET_PROXY }}
-            TARGET_NUGET=${{ env.TARGET_NUGET }}
-            TARGET_NUGET_APIKEY=${{ secrets.TARGET_NUGET_APIKEY }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          version: ${{ steps.set_version.outputs.version }}
+          api-key: ${{ secrets.TARGET_NUGET_APIKEY }}
+          registry-prefix: ${{ env.REGISTRY_PREFIX }}
+          private-nuget: ${{ env.PRIVATE_NUGET }}
+          nuget-proxy: ${{ env.NUGET_PROXY }}
+          target-nuget: ${{ env.TARGET_NUGET }}
 
       - name: Docker Build - Test Target
-        uses: docker/build-push-action@v5
+        uses: ./.github/actions/docker-build # Use the composite action
         with:
-          context: .
-          file: ./Dockerfile
-          push: false
           target: test
-          build-args: |
-            RunExternalProvidersTests=true
-            VERSION=${{ steps.set_version.outputs.version }}
-            REGISTRY_PREFIX=${{ env.REGISTRY_PREFIX }}
-            PRIVATE_NUGET=${{ env.PRIVATE_NUGET }}
-            NUGET_PROXY=${{ env.NUGET_PROXY }}
-            TARGET_NUGET=${{ env.TARGET_NUGET }}
-            TARGET_NUGET_APIKEY=${{ secrets.TARGET_NUGET_APIKEY }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max # Cache test results if beneficial
+          version: ${{ steps.set_version.outputs.version }}
+          api-key: ${{ secrets.TARGET_NUGET_APIKEY }}
+          registry-prefix: ${{ env.REGISTRY_PREFIX }}
+          private-nuget: ${{ env.PRIVATE_NUGET }}
+          nuget-proxy: ${{ env.NUGET_PROXY }}
+          target-nuget: ${{ env.TARGET_NUGET }}
+          # cache-mode: max # Default is max, explicitly set if needed
 
   e2e_test:
     name: E2E Test
@@ -131,39 +111,28 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Docker Build - Package Target
-        uses: docker/build-push-action@v5
+        uses: ./.github/actions/docker-build # Use the composite action
         with:
-          context: .
-          file: ./Dockerfile
-          push: false
           target: package
-          build-args: |
-            RunExternalProvidersTests=true
-            VERSION=${{ needs.build_and_test.outputs.version }}
-            REGISTRY_PREFIX=${{ env.REGISTRY_PREFIX }}
-            PRIVATE_NUGET=${{ env.PRIVATE_NUGET }}
-            NUGET_PROXY=${{ env.NUGET_PROXY }}
-            TARGET_NUGET=${{ env.TARGET_NUGET }}
-            TARGET_NUGET_APIKEY=${{ secrets.TARGET_NUGET_APIKEY }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          version: ${{ needs.build_and_test.outputs.version }}
+          api-key: ${{ secrets.TARGET_NUGET_APIKEY }}
+          registry-prefix: ${{ env.REGISTRY_PREFIX }}
+          private-nuget: ${{ env.PRIVATE_NUGET }}
+          nuget-proxy: ${{ env.NUGET_PROXY }}
+          target-nuget: ${{ env.TARGET_NUGET }}
 
       - name: Docker Build - NuGet Push Target
-        uses: docker/build-push-action@v5
+        uses: ./.github/actions/docker-build # Use the composite action
         with:
-          context: .
-          file: ./Dockerfile
-          push: false # The 'nugetpush' target likely performs the push internally
           target: nugetpush
-          build-args: |
-            RunExternalProvidersTests=true
-            VERSION=${{ needs.build_and_test.outputs.version }}
-            REGISTRY_PREFIX=${{ env.REGISTRY_PREFIX }}
-            PRIVATE_NUGET=${{ env.PRIVATE_NUGET }}
-            NUGET_PROXY=${{ env.NUGET_PROXY }}
-            TARGET_NUGET=${{ env.TARGET_NUGET }}
-            TARGET_NUGET_APIKEY=${{ secrets.TARGET_NUGET_APIKEY }}
-          cache-from: type=gha # Use cache for dependencies, but don't cache the push itself
+          version: ${{ needs.build_and_test.outputs.version }}
+          api-key: ${{ secrets.TARGET_NUGET_APIKEY }}
+          registry-prefix: ${{ env.REGISTRY_PREFIX }}
+          private-nuget: ${{ env.PRIVATE_NUGET }}
+          nuget-proxy: ${{ env.NUGET_PROXY }}
+          target-nuget: ${{ env.TARGET_NUGET }}
+          # push: false # Default is false
+          # cache-mode: min # Don't cache the push itself if desired
 
   publish_docker:
     name: Publish Docker Image
@@ -194,24 +163,18 @@ jobs:
           images: ghcr.io/${{ github.repository }} # Assumes using GHCR
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+        uses: ./.github/actions/docker-build # Use the composite action
         with:
-          context: .
-          file: ./Dockerfile
-          push: true
           target: final-host
+          version: ${{ needs.build_and_test.outputs.version }}
+          api-key: ${{ secrets.TARGET_NUGET_APIKEY }}
+          push: true # Override default
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            RunExternalProvidersTests=true
-            VERSION=${{ needs.build_and_test.outputs.version }}
-            REGISTRY_PREFIX=${{ env.REGISTRY_PREFIX }}
-            PRIVATE_NUGET=${{ env.PRIVATE_NUGET }}
-            NUGET_PROXY=${{ env.NUGET_PROXY }}
-            TARGET_NUGET=${{ env.TARGET_NUGET }}
-            TARGET_NUGET_APIKEY=${{ secrets.TARGET_NUGET_APIKEY }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          registry-prefix: ${{ env.REGISTRY_PREFIX }}
+          private-nuget: ${{ env.PRIVATE_NUGET }}
+          nuget-proxy: ${{ env.NUGET_PROXY }}
+          target-nuget: ${{ env.TARGET_NUGET }}
 
   sonarqube:
     name: SonarQube Analysis
