@@ -11,3 +11,11 @@
 
 **/[Bb]in/
 **/[Oo]bj/
+
+.github
+!.github/nuget/packages
+
+bin/
+obj/
+*.suo
+*.user

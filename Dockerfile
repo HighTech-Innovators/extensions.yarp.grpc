@@ -1,52 +1,15 @@
 # REFS
-# Optional support for using a private 'proxy' registry
-ARG REGISTRY_PREFIX=
-# FROM ${REGISTRY_PREFIX}mcr.microsoft.com/dotnet/sdk:8.0 AS sdk8
-FROM ${REGISTRY_PREFIX}mcr.microsoft.com/dotnet/aspnet:8.0 AS aspnet8
-FROM ${REGISTRY_PREFIX}mcr.microsoft.com/dotnet/runtime:8.0 AS runtime8
-FROM ${REGISTRY_PREFIX}ghcr.io/tarampampam/curl:8.12.1 AS curl
-FROM --platform=$BUILDPLATFORM ${REGISTRY_PREFIX}mcr.microsoft.com/dotnet/sdk:8.0 AS sdk8
-
-#
-#  Nuget config image
-#
-FROM sdk8 AS nuget-config
-
-# Optional support for 1 private package source without auth
-ARG PRIVATE_NUGET=""
-RUN if [ -n "${PRIVATE_NUGET}" ]; \
-  then \
-    if echo "${PRIVATE_NUGET}" | grep -E -q "\.json/?$"; then \
-      dotnet nuget add source "${PRIVATE_NUGET}" --name private --protocol-version 3; \
-    else \
-      dotnet nuget add source "${PRIVATE_NUGET}" --name private --protocol-version 2; \
-    fi; \
-  else \
-    echo "PRIVATE_NUGET not provided"; \
-  fi
-
-# Optional support for a nuget proxy instead of nuget.org
-ARG NUGET_PROXY=""
-RUN if [ -n "${NUGET_PROXY}" ]; \
-  then \
-    if echo "${NUGET_PROXY}" | grep -E -q "\.json/?$"; then \
-      dotnet nuget add source "${NUGET_PROXY}" --name proxy --protocol-version 3; \
-    else \
-      dotnet nuget add source "${NUGET_PROXY}" --name proxy --protocol-version 2; \
-    fi; \
-    dotnet nuget disable source nuget.org; \
-  else \
-    echo "NUGET_PROXY not provided, using nuget.org"; \
-  fi
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS aspnet8
+FROM mcr.microsoft.com/dotnet/runtime:8.0 AS runtime8
+FROM ghcr.io/tarampampam/curl:8.12.1 AS curl
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:8.0 AS sdk8
 
 #
 #  Pre-restore tool image
 #
 FROM sdk8 AS prepare-restore-tool
 
-COPY --from=nuget-config /root/.nuget/NuGet/NuGet.Config ./nuget.config
-RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
-    dotnet tool install --global dotnet-subset --version 0.3.2
+RUN dotnet tool install --global dotnet-subset --version 0.3.2
 
 ##
 #  Pre-restore image
@@ -64,7 +27,6 @@ COPY *.sln ./
 COPY Directory.Build.props ./
 COPY Directory.Packages.props ./
 
-COPY --from=nuget-config /root/.nuget/NuGet/NuGet.Config ./nuget.config
 RUN dotnet subset restore *.sln --root-directory . --output restore_subset/
 
 #
@@ -72,10 +34,6 @@ RUN dotnet subset restore *.sln --root-directory . --output restore_subset/
 #
 FROM sdk8 AS restore
 WORKDIR /code
-
-# Copy the host-cached packages (if any) from the build context first
-# Adjust the source path if you changed it in the workflow yaml
-COPY .github/nuget/packages /root/.nuget/packages
 
 # Copy the subset of project/solution files needed for restore
 COPY --from=prepare-restore-files /code/restore_subset .
@@ -115,10 +73,6 @@ RUN dotnet test --no-build -c Release \
 
 FROM sdk8 AS publish-host
 WORKDIR /code
-
-# Copy the host-cached packages (if any) from the build context first
-# Adjust the source path if you changed it in the workflow yaml
-COPY .github/nuget/packages /root/.nuget/packages
 
 # Copy the subset of project/solution files needed for restore
 COPY --from=prepare-restore-files /code/restore_subset .
