@@ -79,9 +79,14 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build_and_test, e2e_test]
     if: startsWith(github.ref, 'refs/tags/') # Only run for tags
+    permissions:
+      contents: read
+      packages: write # Required to push to GitHub Packages
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Need full history to check branches for tags
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -92,15 +97,37 @@ jobs:
           target: package
           version: ${{ needs.build_and_test.outputs.version }}
 
+      - name: Determine NuGet Target
+        id: determine_nuget_target
+        run: |
+          # Check if the tag exists on the main branch (adjust 'main' if your default branch is different)
+          # Ensure remote branches are fetched if checkout didn't get them all
+          git fetch origin main:main --force
+          if git branch --contains ${{ github.ref_name }} | grep -q 'main$'; then
+            echo "Tag is on main branch. Targeting public NuGet."
+            # Use TARGET_NUGET if set, otherwise default to nuget.org
+            NUGET_URL_VALUE="${{ env.TARGET_NUGET }}"
+            if [ -z "$NUGET_URL_VALUE" ]; then
+              NUGET_URL_VALUE="https://api.nuget.org/v3/index.json"
+            fi
+            echo "NUGET_URL=$NUGET_URL_VALUE" >> $GITHUB_ENV
+            echo "NUGET_API_KEY=${{ secrets.TARGET_NUGET_APIKEY }}" >> $GITHUB_ENV
+          else
+            echo "Tag is NOT on main branch. Targeting GitHub Packages."
+            echo "NUGET_URL=https://nuget.pkg.github.com/${{ github.repository_owner }}" >> $GITHUB_ENV
+            echo "NUGET_API_KEY=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
+          fi
+
       - name: Docker Build - NuGet Push Target
         uses: ./.github/actions/docker-build # Use the composite action
+        env:
+          NUGET_API_KEY: ${{ env.NUGET_API_KEY }}
         with:
           target: nugetpush
           version: ${{ needs.build_and_test.outputs.version }}
-          api-key: ${{ secrets.TARGET_NUGET_APIKEY }}
-          target-nuget: ${{ env.TARGET_NUGET }}
-          # push: false # Default is false
-          # cache-mode: min # Don't cache the push itself if desired
+          target-nuget: ${{ env.NUGET_URL }}
+          secrets: |
+            nuget_api_key=${{ env.NUGET_API_KEY }}
 
   publish_docker:
     name: Publish Docker Image
@@ -135,7 +162,6 @@ jobs:
         with:
           target: final-host
           version: ${{ needs.build_and_test.outputs.version }}
-          api-key: ${{ secrets.TARGET_NUGET_APIKEY }}
           push: true # Override default
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

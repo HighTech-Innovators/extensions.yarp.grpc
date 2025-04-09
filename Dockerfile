@@ -137,8 +137,9 @@ RUN ls -l /nuget
 #
 FROM package AS nugetpush
 ARG TARGET_NUGET
-ARG TARGET_NUGET_APIKEY
-RUN dotnet nuget push /nuget/*.nupkg -s ${TARGET_NUGET} -k ${TARGET_NUGET_APIKEY}
+# Mount the secret file and read its content into the dotnet nuget push command
+RUN --mount=type=secret,id=nuget_api_key \
+    dotnet nuget push /nuget/*.nupkg -s ${TARGET_NUGET} -k "$(cat /run/secrets/nuget_api_key)"
 
 
 ###########################################################################################################

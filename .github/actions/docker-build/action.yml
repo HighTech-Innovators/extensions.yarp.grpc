@@ -9,10 +9,6 @@ inputs:
     description: 'Build version - only required for publish steps'
     required: false
     default: '0.0.0-cicd'
-  api-key:
-    description: 'NuGet API Key'
-    required: false
-    default: ''
   push:
     description: 'Push the image?'
     required: false
@@ -37,6 +33,10 @@ inputs:
     description: 'Cache mode (max or min)'
     required: false
     default: 'max'
+  secrets:
+    description: 'Build secrets'
+    required: false
+    default: ''
 
 runs:
   using: "composite"
@@ -50,11 +50,11 @@ runs:
         target: ${{ inputs.target }}
         tags: ${{ inputs.tags }}
         labels: ${{ inputs.labels }}
+        secrets: ${{ inputs.secrets }}
         build-args: |
           TARGET_NUGET=${{ inputs.target-nuget }}
           RunExternalProvidersTests=${{ inputs.run-external-tests }}
           VERSION=${{ inputs.version }}
-          TARGET_NUGET_APIKEY=${{ inputs.api-key }}
         cache-from: type=gha
         cache-to: type=gha,mode=${{ inputs.cache-mode }}
 
