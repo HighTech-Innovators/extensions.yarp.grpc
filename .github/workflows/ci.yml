@@ -183,33 +183,21 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Docker Build - SonarQube Check Target
-        env:
-          # Pass secrets and context variables as environment variables to the build step
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          # Map GitLab CI variables to GitHub Actions context
-          CI_COMMIT_REF_NAME: ${{ github.ref_name }}
-          CI_MERGE_REQUEST_IID: ${{ github.event.pull_request.number }}
-          CI_MERGE_REQUEST_TARGET_BRANCH_NAME: ${{ github.base_ref }}
-          CI_PROJECT_ID: ${{ github.repository_id }} # Or use github.repository if preferred
         run: |
           docker build . -f sonar.Dockerfile --target sonarqube-check \
             --build-arg SONAR_PROJECT_KEY="${{ env.SONAR_PROJECT_KEY }}" \
             --build-arg RunExternalProvidersTests=true \
-            --build-arg SONAR_HOST_URL="$SONAR_HOST_URL" \
-            --build-arg SONAR_TOKEN="$SONAR_TOKEN" \
             --build-arg SONAR_USER_HOME="${{ env.SONAR_USER_HOME }}" \
-            --build-arg CI_COMMIT_REF_NAME="$CI_COMMIT_REF_NAME" \
-            --build-arg CI_MERGE_REQUEST_IID="$CI_MERGE_REQUEST_IID" \
-            --build-arg CI_MERGE_REQUEST_TARGET_BRANCH_NAME="$CI_MERGE_REQUEST_TARGET_BRANCH_NAME" \
-            --build-arg CI_PROJECT_ID="$CI_PROJECT_ID" \
-            --pull # Replicate --pull from GitLab CI
+            --build-arg CI_COMMIT_REF_NAME="${{ github.ref_name }}" \
+            --build-arg CI_MERGE_REQUEST_IID="${{ github.event.pull_request.number }}" \
+            --build-arg CI_MERGE_REQUEST_TARGET_BRANCH_NAME="${{ github.base_ref }}" \
+            --build-arg CI_PROJECT_ID="${{ github.repository_id }}" \
+            --secret id=sonar_host_url,src=${{ secrets.SONAR_HOST_URL }} \
+            --secret id=sonar_token,src=${{ secrets.SONAR_TOKEN }} \
+            --pull
 
       - name: Download Sonar Vulnerability Report
         env:
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          # Map GitLab CI variables
           CI_COMMIT_BRANCH: ${{ github.ref_name }} # Use ref_name for branch
           CI_MERGE_REQUEST_IID: ${{ github.event.pull_request.number }}
         run: |
@@ -217,11 +205,11 @@ jobs:
           docker buildx build . -f sonar.Dockerfile --target sonar-report-downloader \
             --output type=local,dest=./sonar-report-output \
             --build-arg SONAR_PROJECT_KEY="${{ env.SONAR_PROJECT_KEY }}" \
-            --build-arg SONAR_HOST_URL="$SONAR_HOST_URL" \
-            --build-arg SONAR_TOKEN="$SONAR_TOKEN" \
-            --build-arg CI_COMMIT_BRANCH="$CI_COMMIT_BRANCH" \
-            --build-arg CI_MERGE_REQUEST_IID="$CI_MERGE_REQUEST_IID" \
-            --pull # Replicate --pull from GitLab CI
+            --build-arg CI_COMMIT_BRANCH="${{ github.ref_name }}" \
+            --build-arg CI_MERGE_REQUEST_IID="${{ github.event.pull_request.number }}" \
+            --secret id=sonar_host_url,src=${{ secrets.SONAR_HOST_URL }} \
+            --secret id=sonar_token,src=${{ secrets.SONAR_TOKEN }} \
+            --pull
 
       - name: Upload SAST Report Artifact
         uses: actions/upload-artifact@v4
