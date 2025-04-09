@@ -8,12 +8,11 @@
 !Directory.Packages.props
 !icon.png
 !README.md
+!.github/nuget/packages
+
 
 **/[Bb]in/
 **/[Oo]bj/
-
-.github
-!.github/nuget/packages
 
 bin/
 obj/

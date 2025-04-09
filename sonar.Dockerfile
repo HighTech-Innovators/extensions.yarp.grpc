@@ -1,7 +1,5 @@
 # REFS
-# Optional support for using a private 'proxy' registry
-ARG REGISTRY_PREFIX=
-FROM ${REGISTRY_PREFIX}mcr.microsoft.com/dotnet/sdk:8.0 AS sdk8
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS sdk8
 
 FROM sdk8 AS sonarqube-prepare
 
@@ -29,8 +27,6 @@ WORKDIR /code
 
 # Set environment variables for SonarQube
 ARG SONAR_PROJECT_KEY=""
-ARG SONAR_HOST_URL=""
-ARG SONAR_TOKEN=""
 ARG SONAR_USER_HOME=""
 ARG VERSION=""
 
@@ -64,7 +60,11 @@ COPY .git /code/.git
 ENV sonar_coverage_exclusions="**/testapps/**/*,**/tst/**/*"
 
 # handle branch vs merge request contexts 
-RUN set -e; \
+RUN --mount=type=secret,id=sonar_host_url \
+    --mount=type=secret,id=sonar_token \
+    set -e; \
+    SONAR_HOST_URL=$(cat /run/secrets/sonar_host_url); \
+    SONAR_TOKEN=$(cat /run/secrets/sonar_token); \
     SONAR_SCANNER_PARAMS="/k:${SONAR_PROJECT_KEY} \
     /d:sonar.host.url=${SONAR_HOST_URL} \
     /d:sonar.token=${SONAR_TOKEN} \
@@ -80,14 +80,14 @@ RUN set -e; \
     fi; \
     dotnet sonarscanner begin ${SONAR_SCANNER_PARAMS}
 
-
 RUN dotnet build --no-restore
 
 RUN dotnet test --no-build \
     $(if [ "$RunExternalProvidersTests" = "false" ]; then echo '--filter "FullyQualifiedName!~WithCustomTestContainersImplementation"'; fi) \
     --collect:"XPlat Code Coverage" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
 
-RUN dotnet sonarscanner end /d:sonar.token="${SONAR_TOKEN}"
+RUN --mount=type=secret,id=sonar_token \
+    dotnet sonarscanner end /d:sonar.token=$(cat /run/secrets/sonar_token)
 
 ###########################################################################################################
 ###########################################################################################################
@@ -101,14 +101,17 @@ FROM sdk8 AS sonarqube-report
 
 # Set environment variables for SonarQube
 ARG SONAR_PROJECT_KEY
-ARG SONAR_HOST_URL
 
-# Add SONAR_TOKEN as ARG
-ARG SONAR_TOKEN
+# Add CI_COMMIT_BRANCH and CI_MERGE_REQUEST_IID as ARGs
 ARG CI_COMMIT_BRANCH
 ARG CI_MERGE_REQUEST_IID
 WORKDIR /output
-RUN curl -u "${SONAR_TOKEN}:" "${SONAR_HOST_URL}/api/issues/gitlab_sast_export?projectKey=${SONAR_PROJECT_KEY}&branch=${CI_COMMIT_BRANCH}&pullRequest=${CI_MERGE_REQUEST_IID}" -o gl-sast-sonar-report.json
+RUN --mount=type=secret,id=sonar_host_url \
+    --mount=type=secret,id=sonar_token \
+    set -e; \
+    SONAR_HOST_URL=$(cat /run/secrets/sonar_host_url); \
+    SONAR_TOKEN=$(cat /run/secrets/sonar_token); \
+    curl -u "${SONAR_TOKEN}:" "${SONAR_HOST_URL}/api/issues/gitlab_sast_export?projectKey=${SONAR_PROJECT_KEY}&branch=${CI_COMMIT_BRANCH}&pullRequest=${CI_MERGE_REQUEST_IID}" -o gl-sast-sonar-report.json
 
 ###########################################################################################################
 ###########################################################################################################
