@@ -1,0 +1,41 @@
+version: 2
+updates:
+  - package-ecosystem: "nuget"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "nuget"
+    versioning-strategy:
+      increase: "semver"
+    # Controls version updates for NuGet dependencies
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    # Auto-merge patch updates if tests pass
+    auto-merge-settings:
+      mergeable:
+        - dependency-type: "all"
+          update-type: "semver-patch"
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "docker"
+    # Controls version updates for Docker images
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    # Auto-merge patch updates if tests pass
+    auto-merge-settings:
+      mergeable:
+        - dependency-type: "all"
+          update-type: "semver-patch"
