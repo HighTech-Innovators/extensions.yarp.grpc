@@ -82,6 +82,7 @@ jobs:
     permissions:
       contents: read
       packages: write # Required to push to GitHub Packages
+      id-token: write # nuget.org Trusted Publishing (OIDC)
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -97,6 +98,12 @@ jobs:
           target: package
           version: ${{ needs.build_and_test.outputs.version }}
 
+      - name: NuGet login (OIDC, Trusted Publishing)
+        id: nuget_login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ vars.NUGET_USER || 'htibartdeboer' }}
+
       - name: Determine NuGet Target
         id: determine_nuget_target
         run: |
@@ -111,7 +118,7 @@ jobs:
               NUGET_URL_VALUE="https://api.nuget.org/v3/index.json"
             fi
             echo "NUGET_URL=$NUGET_URL_VALUE" >> $GITHUB_ENV
-            echo "NUGET_API_KEY=${{ secrets.TARGET_NUGET_APIKEY }}" >> $GITHUB_ENV
+            echo "NUGET_API_KEY=${{ steps.nuget_login.outputs.NUGET_API_KEY }}" >> $GITHUB_ENV
           else
             echo "Tag is NOT on main branch. Targeting GitHub Packages."
             echo "NUGET_URL=https://nuget.pkg.github.com/${{ github.repository_owner }}" >> $GITHUB_ENV
